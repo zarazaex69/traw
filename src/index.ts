@@ -6,7 +6,7 @@ const defaultConfig: AgentConfig = {
   moUrl: "http://localhost:8080",
   model: "glm-4.7",
   headless: false,
-  recordVideo: true,
+  recordVideo: false,
   maxSteps: 20,
 }
 
@@ -34,8 +34,8 @@ async function main() {
       config.headless = true
       continue
     }
-    if (arg === "--no-video") {
-      config.recordVideo = false
+    if (arg === "--video") {
+      config.recordVideo = true
       continue
     }
     if (arg.startsWith("--steps=")) {
@@ -81,21 +81,20 @@ async function main() {
 
 function printHelp() {
   console.log(`
-🌐 traw - AI browser agent
+traw - AI browser agent
 
 Usage:
   traw run "your goal here"
-  traw run                    # interactive mode (coming soon)
 
 Options:
   --headless    run without visible browser
-  --no-video    disable video recording
+  --video       enable video recording
   --steps=N     max steps (default: 20)
   --mo=URL      mo server url (default: http://localhost:8080)
 
 Examples:
   traw run "find the weather in Moscow"
-  traw run "search for bun.js documentation"
+  traw run --video "search for bun.js documentation"
 `)
 }
 
