@@ -4,14 +4,18 @@
   "module": "src/index.ts",
   "type": "module",
   "bin": {
-    "traw": "./src/index.ts"
+    "traw": "./src/index.ts",
+    "traw-mcp": "./src/mcp-server.ts"
   },
   "scripts": {
     "traw": "bun run src/index.ts",
+    "mcp": "bun run src/mcp-server.ts",
     "postinstall": "bunx playwright install firefox"
   },
   "dependencies": {
-    "playwright": "^1.52.0"
+    "@modelcontextprotocol/sdk": "^1.25.1",
+    "playwright": "^1.52.0",
+    "zod": "^4.2.1"
   },
   "devDependencies": {
     "@types/bun": "latest"
