@@ -62,11 +62,12 @@ export const log = {
     console.log()
   },
 
-  config: (opts: { mo: string; model: string; headless: boolean; video: boolean; steps: number }) => {
+  config: (opts: { mo: string; model: string; headless: boolean; video: boolean; vision: boolean; steps: number }) => {
     const parts = [
       `${c.dim}${opts.model}${c.reset}`,
       opts.headless ? `${c.dim}headless${c.reset}` : null,
       opts.video ? `${c.dim}video${c.reset}` : null,
+      opts.vision ? `${c.dim}vision${c.reset}` : null,
       `${c.dim}steps:${c.reset} ${opts.steps}`,
     ].filter(Boolean)
     console.log(`  ${parts.join("  ")}`)

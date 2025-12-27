@@ -12,6 +12,7 @@ const defaultConfig: AgentConfig = {
   headless: process.env.TRAW_HEADLESS !== "false",
   recordVideo: process.env.TRAW_VIDEO === "true",
   maxSteps: parseInt(process.env.TRAW_MAX_STEPS || "20"),
+  useVision: process.env.TRAW_VISION === "true",
 }
 
 const server = new McpServer({
@@ -30,15 +31,17 @@ server.tool(
     goal: z.string().describe("The task for the browser agent to complete, e.g. 'find the weather in Moscow' or 'search for bun.js documentation'"),
     headless: z.boolean().optional().describe("Run browser without visible window (default: true)"),
     maxSteps: z.number().optional().describe("Maximum steps the agent can take (default: 20)"),
+    useVision: z.boolean().optional().describe("Send page screenshots to AI for visual understanding (default: false)"),
   },
-  async ({ goal, headless, maxSteps }) => {
+  async ({ goal, headless, maxSteps, useVision }) => {
     log("info", `Starting task: "${goal}"`)
-    log("debug", `Config: headless=${headless ?? defaultConfig.headless}, maxSteps=${maxSteps ?? defaultConfig.maxSteps}`)
+    log("debug", `Config: headless=${headless ?? defaultConfig.headless}, maxSteps=${maxSteps ?? defaultConfig.maxSteps}, vision=${useVision ?? defaultConfig.useVision}`)
 
     const config: AgentConfig = {
       ...defaultConfig,
       headless: headless ?? defaultConfig.headless,
       maxSteps: maxSteps ?? defaultConfig.maxSteps,
+      useVision: useVision ?? defaultConfig.useVision,
     }
 
     const agent = new Agent(config)

@@ -1,5 +1,8 @@
 import { firefox, type Browser, type Page, type BrowserContext } from "playwright"
 import { mkdir } from "node:fs/promises"
+import { Readability } from "@mozilla/readability"
+import TurndownService from "turndown"
+import { parseHTML } from "linkedom"
 import type { Action, PageState, AgentConfig } from "../types"
 
 export class BrowserController {
@@ -80,17 +83,23 @@ export class BrowserController {
     return videoPath
   }
 
-  async getState(): Promise<PageState> {
+  async getState(includeScreenshot = false): Promise<PageState> {
     if (!this.page) throw new Error("browser not launched")
 
     await this.waitForContent()
 
     const url = this.page.url()
     const title = await this.page.title()
-    const content = await this.extractContent()
     const dom = await this.extractDom()
+    const markdown = await this.extractMarkdown()
 
-    return { url, title, dom, content }
+    let screenshot: string | undefined
+    if (includeScreenshot) {
+      const buf = await this.page.screenshot({ type: "jpeg", quality: 80 })
+      screenshot = `data:image/jpeg;base64,${buf.toString("base64")}`
+    }
+
+    return { url, title, dom, content: markdown, screenshot }
   }
 
   async execute(action: Action): Promise<string> {
@@ -142,59 +151,42 @@ export class BrowserController {
     return this.page.screenshot()
   }
 
-
-  private async extractContent(): Promise<string> {
+  private async extractMarkdown(): Promise<string> {
     if (!this.page) return ""
 
-    return this.page.evaluate(() => {
-      const sections: string[] = []
+    const html = await this.page.content()
 
-      const metaDesc = document.querySelector('meta[name="description"]')
-      if (metaDesc) {
-        const content = metaDesc.getAttribute("content")
-        if (content) sections.push(`[meta] ${content}`)
+    try {
+      const { document } = parseHTML(html)
+
+      // readability extracts main content, strips ads/nav/footer
+      const reader = new Readability(document as any)
+      const article = reader.parse()
+
+      if (!article?.content) {
+        // fallback: just get body text
+        return document.body?.textContent?.slice(0, 5000) || ""
       }
 
-      const mainContent = document.querySelector("main, article, .content, #content, [role='main']") || document.body
-
-      const headings = mainContent.querySelectorAll("h1, h2, h3")
-      headings.forEach((h) => {
-        const text = (h as HTMLElement).innerText?.trim()
-        if (text && text.length < 200) {
-          const level = h.tagName.toLowerCase()
-          sections.push(`[${level}] ${text}`)
-        }
+      // convert clean html to markdown
+      const turndown = new TurndownService({
+        headingStyle: "atx",
+        codeBlockStyle: "fenced",
       })
 
-      const paragraphs = mainContent.querySelectorAll("p")
-      paragraphs.forEach((p) => {
-        const text = (p as HTMLElement).innerText?.trim()
-        if (text && text.length > 30 && text.length < 500) {
-          sections.push(text)
-        }
-      })
+      const md = turndown.turndown(article.content)
 
-      const listItems = mainContent.querySelectorAll("li")
-      listItems.forEach((li) => {
-        const text = (li as HTMLElement).innerText?.trim()
-        if (text && text.length > 10 && text.length < 200) {
-          if (!li.closest("nav, header, footer")) {
-            sections.push(`• ${text}`)
-          }
-        }
-      })
+      // trim if too long
+      if (md.length > 8000) {
+        return md.slice(0, 8000) + "\n\n[content truncated...]"
+      }
 
-      const codeBlocks = mainContent.querySelectorAll("pre code, pre")
-      codeBlocks.forEach((code) => {
-        const text = (code as HTMLElement).innerText?.trim()
-        if (text && text.length > 20) {
-          sections.push(`[code] ${text}`)
-        }
-      })
-
-      const unique = [...new Set(sections)]
-      return unique.join("\n\n")
-    })
+      return md
+    } catch {
+      // fallback on parse error
+      const text = await this.page.evaluate(() => document.body?.innerText || "")
+      return text.slice(0, 5000)
+    }
   }
 
   private async extractDom(): Promise<string> {

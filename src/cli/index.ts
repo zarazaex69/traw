@@ -11,6 +11,7 @@ const defaultConfig: AgentConfig = {
   headless: false,
   recordVideo: false,
   maxSteps: 20,
+  useVision: false,
 }
 
 async function main() {
@@ -39,6 +40,10 @@ async function main() {
     }
     if (arg === "--video") {
       config.recordVideo = true
+      continue
+    }
+    if (arg === "--vision") {
+      config.useVision = true
       continue
     }
     if (arg === "--fast") {
@@ -71,6 +76,7 @@ async function main() {
     model: config.model,
     headless: config.headless,
     video: config.recordVideo,
+    vision: config.useVision,
     steps: config.maxSteps,
   })
 

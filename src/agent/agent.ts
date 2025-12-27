@@ -1,8 +1,8 @@
-import type { Action, AgentConfig, AgentStep, ChatMessage, PageState } from "../types"
+import type { Action, AgentConfig, AgentStep, ChatMessage, MessageContent, PageState } from "../types"
 import { BrowserController } from "../browser/controller"
 import { MoClient } from "../api/mo-client"
 import { log } from "../utils/log"
-import { systemPrompt, planningPrompt } from "./prompts"
+import { systemPrompt, systemPromptVision, planningPrompt } from "./prompts"
 
 export class Agent {
   private browser: BrowserController
@@ -33,7 +33,8 @@ export class Agent {
     })
     log.openStop()
 
-    this.messages.push({ role: "system", content: systemPrompt })
+    const prompt = this.config.useVision ? systemPromptVision : systemPrompt
+    this.messages.push({ role: "system", content: prompt })
     this.messages.push({
       role: "user",
       content: `Your task: ${goal}\n\nYour plan:\n${this.plan}\n\nFollow this plan step by step. You are now on DuckDuckGo search.`,
@@ -44,7 +45,7 @@ export class Agent {
     try {
       for (let step = 0; step < this.config.maxSteps; step++) {
         log.loadStart()
-        const state = await this.browser.getState()
+        const state = await this.browser.getState(this.config.useVision)
         log.loadStop()
 
         log.step(step + 1, this.config.maxSteps, state.url)
@@ -97,7 +98,7 @@ export class Agent {
       ? `\nPage content:\n${state.content}\n`
       : ""
 
-    const stateMsg = `Current page:
+    const stateText = `Current page:
 URL: ${state.url}
 Title: ${state.title}
 ${contentSection}
@@ -106,7 +107,16 @@ ${state.dom}
 
 What's your next action?`
 
-    this.messages.push({ role: "user", content: stateMsg })
+    // build message with or without screenshot
+    if (state.screenshot) {
+      const content: MessageContent[] = [
+        { type: "image_url", image_url: { url: state.screenshot } },
+        { type: "text", text: stateText },
+      ]
+      this.messages.push({ role: "user", content })
+    } else {
+      this.messages.push({ role: "user", content: stateText })
+    }
 
     const response = await this.mo.chat(this.messages)
 
