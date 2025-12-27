@@ -16,11 +16,8 @@ Traw is a simple and fast neuro agent that browses the internet instead of you
 ## Fast Start
 
 ```bash
-# build the traw 
- bun build index.ts --compile --outfile=bin/traw
- 
  # start the traw
-./bin/traw
+bun run traw run "your goal" // re.. goal -> you real goal... not mock... you get the idea... 
 ```
 
 <div align="center">

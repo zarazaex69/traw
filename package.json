@@ -1,8 +1,16 @@
 {
   "name": "traw",
-  "module": "index.ts",
+  "version": "0.1.0",
+  "module": "src/index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "traw": "bun run src/index.ts",
+    "postinstall": "bunx playwright install firefox"
+  },
+  "dependencies": {
+    "playwright": "^1.40.0"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },

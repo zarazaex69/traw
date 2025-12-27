@@ -1,0 +1,178 @@
+import type { Action, AgentConfig, AgentStep, ChatMessage, PageState } from "./types"
+import { BrowserController } from "./browser"
+import { MoClient } from "./mo-client"
+
+const SYSTEM_PROMPT = `You are a browser automation agent. You see the page state and decide what to do next.
+
+ACTIONS:
+- goto: navigate to URL
+- click: click element by CSS selector
+- type: type text into input (selector + text)
+- scroll: scroll up/down
+- wait: wait 1s
+- done: task complete, report results
+
+CSS SELECTOR RULES (CRITICAL):
+- Use ONLY valid CSS selectors
+- IDs: #search_form_input
+- Classes: .result__a or a.result__a
+- Attributes: a[href*="github.com"] or input[name="q"]
+- Tag + class: button.search-btn
+- NEVER use parentheses in selectors like a(something) - this is INVALID
+- NEVER invent class names - use only what you see in the DOM
+
+IMPORTANT RULES:
+- Follow your plan step by step
+- Do NOT use "done" until you have FULLY completed ALL steps in your plan
+- If you encounter an error, try alternative approach
+- Actually visit pages and read content, don't guess from search results
+
+Respond with JSON only:
+{
+  "thought": "brief reasoning",
+  "action": {
+    "type": "click|type|goto|scroll|wait|done",
+    "selector": "#valid-css-selector",
+    "text": "for type/goto",
+    "direction": "up|down",
+    "reason": "why"
+  }
+}
+
+When ALL steps complete, use "done" with full results in "reason".`
+
+const PLANNING_PROMPT = `You are a planning agent. Create a step-by-step plan to accomplish the user's goal using a web browser.
+
+Rules:
+- Be specific about what to search, click, or navigate to
+- Number each step
+- Keep it concise (max 10 steps)
+- Start from DuckDuckGo search page
+
+Respond with a numbered plan only, no JSON.`
+
+export class Agent {
+  private browser: BrowserController
+  private mo: MoClient
+  private config: AgentConfig
+  private history: AgentStep[] = []
+  private messages: ChatMessage[] = []
+  private plan: string = ""
+
+  constructor(config: AgentConfig) {
+    this.config = config
+    this.browser = new BrowserController(config)
+    this.mo = new MoClient(config.moUrl, config.model)
+  }
+
+  private async createPlan(goal: string): Promise<string> {
+    const resp = await this.mo.chat([
+      { role: "system", content: PLANNING_PROMPT },
+      { role: "user", content: `Goal: ${goal}` },
+    ])
+    return resp
+  }
+
+  async run(goal: string): Promise<AgentStep[]> {
+    console.log(`\n[goal] ${goal}\n`)
+    
+    // create plan first
+    console.log("[planning]...")
+    this.plan = await this.createPlan(goal)
+    console.log("\n" + this.plan + "\n")
+    
+    await this.browser.launch()
+    
+    // start at duckduckgo
+    await this.browser.execute({ type: "goto", text: "https://html.duckduckgo.com/html/", reason: "start page" })
+    
+    // init conversation with plan
+    this.messages.push({ role: "system", content: SYSTEM_PROMPT })
+    this.messages.push({
+      role: "user",
+      content: `Your task: ${goal}\n\nYour plan:\n${this.plan}\n\nFollow this plan step by step. You are now on DuckDuckGo search.`,
+    })
+
+    try {
+      for (let step = 0; step < this.config.maxSteps; step++) {
+        const state = await this.browser.getState()
+        
+        console.log(`\n--- step ${step + 1} ---`)
+        console.log(`url: ${state.url}`)
+        console.log(`title: ${state.title}`)
+        
+        const decision = await this.think(state)
+        
+        console.log(`thought: ${decision.thought}`)
+        console.log(`action: ${decision.action.type} - ${decision.action.reason}`)
+        
+        const result = await this.browser.execute(decision.action)
+        console.log(`result: ${result}`)
+        
+        this.history.push({
+          timestamp: Date.now(),
+          thought: decision.thought,
+          action: decision.action,
+          result,
+        })
+
+        if (decision.action.type === "done") {
+          console.log(`\n[complete]`)
+          break
+        }
+
+        // small delay between actions
+        await new Promise(r => setTimeout(r, 500))
+      }
+    } finally {
+      const videoPath = await this.browser.close()
+      if (videoPath) {
+        console.log(`[video] ${videoPath}`)
+      }
+    }
+
+    return this.history
+  }
+
+  private async think(state: PageState): Promise<{ thought: string; action: Action }> {
+    // add current state to conversation
+    const stateMsg = `Current page:
+URL: ${state.url}
+Title: ${state.title}
+
+Interactive elements:
+${state.dom}
+
+What's your next action?`
+
+    this.messages.push({ role: "user", content: stateMsg })
+
+    const response = await this.mo.chat(this.messages)
+    
+    // parse JSON response
+    try {
+      // extract JSON from response (handle markdown code blocks)
+      let jsonStr = response
+      const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/)
+      if (jsonMatch) {
+        jsonStr = jsonMatch[1]
+      }
+      
+      const parsed = JSON.parse(jsonStr.trim())
+      
+      this.messages.push({ role: "assistant", content: response })
+      
+      return {
+        thought: parsed.thought || "thinking...",
+        action: parsed.action,
+      }
+    } catch (err) {
+      console.error("Failed to parse AI response:", response)
+      // fallback: wait and retry
+      return {
+        thought: "couldn't parse response, waiting...",
+        action: { type: "wait", reason: "parse error" },
+      }
+    }
+  }
+}
