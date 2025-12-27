@@ -16,10 +16,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          bun-version: latest
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Get version
         id: version
@@ -27,23 +28,7 @@ jobs:
 
       - name: Update package version
         run: |
-          bun run -e "
-            const pkg = await Bun.file('package.json').json();
-            pkg.version = '${{ steps.version.outputs.VERSION }}';
-            await Bun.write('package.json', JSON.stringify(pkg, null, 2));
-          "
-
-      - name: Install dependencies
-        run: bun install
-
-      - name: Build
-        run: bun build ./src/index.ts --outdir ./dist --target node
-
-      - name: Setup Node for NPM publish
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
+          npm version ${{ steps.version.outputs.VERSION }} --no-git-tag-version
 
       - name: Publish to NPM
         run: npm publish --access public
@@ -53,22 +38,24 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          name: Traw ${{ steps.version.outputs.VERSION }}
+          name: Traw v${{ steps.version.outputs.VERSION }}
           body: |
-            ## Traw ${{ steps.version.outputs.VERSION }}
+            ## Traw v${{ steps.version.outputs.VERSION }}
 
             ### Installation
 
             ```bash
-            npm install -g traw
-            # or
-            bun add -g traw
+            # npm
+            npm install traw
+
+            # bun
+            bun add traw
             ```
 
             ### Usage
 
             ```bash
-            traw
+            bun run traw
             ```
           draft: false
           prerelease: false
