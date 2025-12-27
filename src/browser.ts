@@ -165,7 +165,6 @@ export class BrowserController {
       // get main headings with their content
       const mainContent = document.querySelector("main, article, .content, #content, [role='main']") || document.body
 
-      // extract headings hierarchy
       const headings = mainContent.querySelectorAll("h1, h2, h3")
       headings.forEach((h) => {
         const text = (h as HTMLElement).innerText?.trim()
@@ -175,51 +174,36 @@ export class BrowserController {
         }
       })
 
-      // extract paragraphs (first 10)
       const paragraphs = mainContent.querySelectorAll("p")
-      let pCount = 0
       paragraphs.forEach((p) => {
-        if (pCount >= 10) return
         const text = (p as HTMLElement).innerText?.trim()
         if (text && text.length > 30 && text.length < 500) {
           sections.push(text)
-          pCount++
         }
       })
 
-      // extract list items (first 15)
       const listItems = mainContent.querySelectorAll("li")
-      let liCount = 0
       listItems.forEach((li) => {
-        if (liCount >= 15) return
         const text = (li as HTMLElement).innerText?.trim()
         if (text && text.length > 10 && text.length < 200) {
           // skip if it's just a nav item
           if (!li.closest("nav, header, footer")) {
             sections.push(`• ${text}`)
-            liCount++
           }
         }
       })
 
-      // extract code blocks (first 3)
       const codeBlocks = mainContent.querySelectorAll("pre code, pre")
-      let codeCount = 0
       codeBlocks.forEach((code) => {
-        if (codeCount >= 3) return
         const text = (code as HTMLElement).innerText?.trim()
-        if (text && text.length > 20 && text.length < 300) {
-          sections.push(`[code] ${text.slice(0, 200)}`)
-          codeCount++
+        if (text && text.length > 20) {
+          sections.push(`[code] ${text}`)
         }
       })
 
-      // dedupe and limit total length
+      // dedupe
       const unique = [...new Set(sections)]
-      const result = unique.join("\n\n")
-
-      // cap at ~4000 chars to not overwhelm the LLM
-      return result.length > 4000 ? result.slice(0, 4000) + "\n[...truncated]" : result
+      return unique.join("\n\n")
     })
   }
 
@@ -251,7 +235,6 @@ export class BrowserController {
           const title = el.getAttribute("title") || ""
           const ariaLabel = el.getAttribute("aria-label") || ""
 
-          // build css selector - try multiple strategies
           let selector = ""
 
           if (el.id) {
@@ -269,7 +252,6 @@ export class BrowserController {
             if (cls) selector = `${tag}.${cls}`
           }
 
-          // fallback: nth-of-type
           if (!selector && (tag === "button" || tag === "a")) {
             const siblings = Array.from(document.querySelectorAll(tag))
             const index = siblings.findIndex((s) => s === el) + 1
@@ -291,8 +273,8 @@ export class BrowserController {
         })
       })
 
-      // dedupe and limit
-      return [...new Set(elements)].slice(0, 60).join("\n")
+      // dedupe
+      return [...new Set(elements)].join("\n")
     })
   }
 }
