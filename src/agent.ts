@@ -1,6 +1,7 @@
 import type { Action, AgentConfig, AgentStep, ChatMessage, PageState } from "./types"
 import { BrowserController } from "./browser"
 import { MoClient } from "./mo-client"
+import { log } from "./log"
 
 const systemPrompt = `You are a browser automation agent. You see the page state and decide what to do next.
 
@@ -66,11 +67,11 @@ export class Agent {
   }
 
   async run(goal: string): Promise<AgentStep[]> {
-    console.log(`\n[goal] ${goal}\n`)
+    log.info("goal", goal)
 
-    console.log("[planning]...")
+    log.info("planning", "...")
     this.plan = await this.createPlan(goal)
-    console.log("\n" + this.plan + "\n")
+    log.plan(this.plan)
 
     await this.browser.launch()
     await this.browser.execute({
@@ -89,17 +90,17 @@ export class Agent {
       for (let step = 0; step < this.config.maxSteps; step++) {
         const state = await this.browser.getState()
 
-        console.log(`\n--- step ${step + 1} ---`)
-        console.log(`url: ${state.url}`)
-        console.log(`title: ${state.title}`)
+        log.step(step + 1)
+        log.dim("url", state.url)
+        log.dim("title", state.title)
 
         const decision = await this.think(state)
 
-        console.log(`thought: ${decision.thought}`)
-        console.log(`action: ${decision.action.type} - ${decision.action.reason}`)
+        log.thought(decision.thought)
+        log.action(decision.action.type, decision.action.reason)
 
         const result = await this.browser.execute(decision.action)
-        console.log(`result: ${result}`)
+        log.result(result)
 
         this.history.push({
           timestamp: Date.now(),
@@ -109,7 +110,7 @@ export class Agent {
         })
 
         if (decision.action.type === "done") {
-          console.log(`\n[complete]`)
+          log.done()
           break
         }
 
@@ -118,7 +119,7 @@ export class Agent {
     } finally {
       const videoPath = await this.browser.close()
       if (videoPath) {
-        console.log(`[video] ${videoPath}`)
+        log.info("video", videoPath)
       }
     }
 

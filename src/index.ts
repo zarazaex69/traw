@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { Agent } from "./agent"
 import type { AgentConfig } from "./types"
+import { log } from "./log"
 
 const defaultConfig: AgentConfig = {
   moUrl: "http://localhost:8080",
@@ -53,28 +54,28 @@ async function main() {
 
   const goal = goalParts.join(" ")
   if (!goal) {
-    console.error("[error] provide a goal: bun run traw run \"your goal\"")
+    log.error("provide a goal: bun run traw run \"your goal\"")
     process.exit(1)
   }
 
-  console.log("[traw] starting agent...")
-  console.log(`  mo: ${config.moUrl}`)
-  console.log(`  headless: ${config.headless}`)
-  console.log(`  video: ${config.recordVideo}`)
-  console.log(`  max steps: ${config.maxSteps}`)
+  log.info("traw", "starting agent...")
+  log.dim("  mo", config.moUrl)
+  log.dim("  headless", String(config.headless))
+  log.dim("  video", String(config.recordVideo))
+  log.dim("  max steps", String(config.maxSteps))
 
   const agent = new Agent(config)
 
   try {
     const history = await agent.run(goal)
 
-    console.log("\n[done] steps:", history.length)
+    log.done(`steps: ${history.length}`)
     if (history.length > 0) {
       const last = history[history.length - 1]
-      console.log("  final:", last.action.type, "-", last.action.reason)
+      log.dim("  final", `${last.action.type} - ${last.action.reason}`)
     }
   } catch (err: any) {
-    console.error("\n[error]", err.message)
+    log.error(err.message)
     process.exit(1)
   }
 }

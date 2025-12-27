@@ -47,9 +47,13 @@ jobs:
             ```bash
             # npm
             npm install traw
+            # npm global
+            npm install -g traw
 
             # bun
             bun add traw
+            # bun global
+            bun add -g traw
             ```
 
             ### Usage
