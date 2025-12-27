@@ -22,8 +22,16 @@ CSS SELECTOR RULES (CRITICAL):
 - NEVER use parentheses in selectors like a(something) - this is INVALID
 - NEVER invent class names - use only what you see in the DOM
 
+PAGE CONTENT:
+- You receive "Page content" section with actual text from the page
+- This includes headings (h1, h2, h3), paragraphs, list items, and code blocks
+- USE THIS CONTENT to understand what the page is about
+- Read the content carefully before deciding next action
+- If you have enough information from content, you can use "done"
+
 IMPORTANT RULES:
 - Follow your plan step by step
+- READ the page content to understand what you're looking at
 - Do NOT use "done" until you have FULLY completed ALL steps in your plan
 - If you encounter an error, try alternative approach
 - Actually visit pages and read content, don't guess from search results
@@ -134,10 +142,14 @@ export class Agent {
   }
 
   private async think(state: PageState): Promise<{ thought: string; action: Action }> {
+    const contentSection = state.content
+      ? `\nPage content:\n${state.content}\n`
+      : ""
+
     const stateMsg = `Current page:
 URL: ${state.url}
 Title: ${state.title}
-
+${contentSection}
 Interactive elements:
 ${state.dom}
 

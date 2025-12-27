@@ -19,6 +19,7 @@ export interface PageState {
   url: string
   title: string
   dom: string
+  content?: string
   screenshot?: string
 }
 

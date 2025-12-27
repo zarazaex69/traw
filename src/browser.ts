@@ -32,6 +32,30 @@ export class BrowserController {
     this.page = await this.context.newPage()
   }
 
+  // wait for page to be fully loaded (including JS content)
+  private async waitForContent(): Promise<void> {
+    if (!this.page) return
+
+    try {
+      // wait for network to be idle
+      await this.page.waitForLoadState("networkidle", { timeout: 10000 }).catch(() => {})
+
+      // wait for DOM content
+      await this.page.waitForLoadState("domcontentloaded", { timeout: 5000 }).catch(() => {})
+
+      // extra wait for JS frameworks to render
+      await this.page.waitForTimeout(800)
+
+      // wait for body to have content
+      await this.page.waitForFunction(
+        () => document.body && document.body.innerText.length > 100,
+        { timeout: 5000 }
+      ).catch(() => {})
+    } catch {
+      // ignore timeout errors, page might be simple html
+    }
+  }
+
   async close(): Promise<string | null> {
     let videoPath: string | null = null
 
@@ -67,11 +91,15 @@ export class BrowserController {
   async getState(): Promise<PageState> {
     if (!this.page) throw new Error("browser not launched")
 
+    // wait for dynamic content to load
+    await this.waitForContent()
+
     const url = this.page.url()
     const title = await this.page.title()
+    const content = await this.extractContent()
     const dom = await this.extractDom()
 
-    return { url, title, dom }
+    return { url, title, dom, content }
   }
 
   async execute(action: Action): Promise<string> {
@@ -80,12 +108,13 @@ export class BrowserController {
     try {
       switch (action.type) {
         case "goto":
-          await this.page.goto(action.text!, { waitUntil: "networkidle", timeout: 15000 })
+          await this.page.goto(action.text!, { waitUntil: "domcontentloaded", timeout: 20000 })
+          await this.waitForContent()
           return `navigated to ${action.text}`
 
         case "click":
           await this.page.click(action.selector!, { timeout: 10000 })
-          await this.page.waitForLoadState("networkidle", { timeout: 10000 }).catch(() => {})
+          await this.waitForContent()
           return `clicked ${action.selector}`
 
         case "type":
@@ -120,6 +149,81 @@ export class BrowserController {
   async screenshot(): Promise<Buffer> {
     if (!this.page) throw new Error("browser not launched")
     return this.page.screenshot()
+  }
+
+  // extract readable text content from page
+  private async extractContent(): Promise<string> {
+    if (!this.page) return ""
+
+    return this.page.evaluate(() => {
+      const sections: string[] = []
+
+      // get meta description
+      const metaDesc = document.querySelector('meta[name="description"]')
+      if (metaDesc) {
+        const content = metaDesc.getAttribute("content")
+        if (content) sections.push(`[meta] ${content}`)
+      }
+
+      // get main headings with their content
+      const mainContent = document.querySelector("main, article, .content, #content, [role='main']") || document.body
+
+      // extract headings hierarchy
+      const headings = mainContent.querySelectorAll("h1, h2, h3")
+      headings.forEach((h) => {
+        const text = (h as HTMLElement).innerText?.trim()
+        if (text && text.length < 200) {
+          const level = h.tagName.toLowerCase()
+          sections.push(`[${level}] ${text}`)
+        }
+      })
+
+      // extract paragraphs (first 10)
+      const paragraphs = mainContent.querySelectorAll("p")
+      let pCount = 0
+      paragraphs.forEach((p) => {
+        if (pCount >= 10) return
+        const text = (p as HTMLElement).innerText?.trim()
+        if (text && text.length > 30 && text.length < 500) {
+          sections.push(text)
+          pCount++
+        }
+      })
+
+      // extract list items (first 15)
+      const listItems = mainContent.querySelectorAll("li")
+      let liCount = 0
+      listItems.forEach((li) => {
+        if (liCount >= 15) return
+        const text = (li as HTMLElement).innerText?.trim()
+        if (text && text.length > 10 && text.length < 200) {
+          // skip if it's just a nav item
+          if (!li.closest("nav, header, footer")) {
+            sections.push(`• ${text}`)
+            liCount++
+          }
+        }
+      })
+
+      // extract code blocks (first 3)
+      const codeBlocks = mainContent.querySelectorAll("pre code, pre")
+      let codeCount = 0
+      codeBlocks.forEach((code) => {
+        if (codeCount >= 3) return
+        const text = (code as HTMLElement).innerText?.trim()
+        if (text && text.length > 20 && text.length < 300) {
+          sections.push(`[code] ${text.slice(0, 200)}`)
+          codeCount++
+        }
+      })
+
+      // dedupe and limit total length
+      const unique = [...new Set(sections)]
+      const result = unique.join("\n\n")
+
+      // cap at ~4000 chars to not overwhelm the LLM
+      return result.length > 4000 ? result.slice(0, 4000) + "\n[...truncated]" : result
+    })
   }
 
   // extract only interactive elements with valid css selectors
