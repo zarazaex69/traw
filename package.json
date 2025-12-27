@@ -4,12 +4,12 @@
   "module": "src/index.ts",
   "type": "module",
   "bin": {
-    "traw": "./src/index.ts",
-    "traw-mcp": "./src/mcp-server.ts"
+    "traw": "./src/cli/index.ts",
+    "traw-mcp": "./src/mcp/server.ts"
   },
   "scripts": {
-    "traw": "bun run src/index.ts",
-    "mcp": "bun run src/mcp-server.ts",
+    "traw": "bun run src/cli/index.ts",
+    "mcp": "bun run src/mcp/server.ts",
     "postinstall": "bunx playwright install firefox"
   },
   "dependencies": {

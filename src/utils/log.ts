@@ -23,7 +23,6 @@ const icons = {
   play: ">",
 }
 
-// animated spinner for loading states
 class Spinner {
   private frames = [".", "..", "..."]
   private idx = 0
@@ -35,12 +34,10 @@ class Spinner {
   }
 
   start() {
-    // hide cursor
     process.stdout.write("\x1b[?25l")
     process.stdout.write(`  ${c.dim}${this.label}...${c.reset}`)
     this.interval = setInterval(() => {
       this.idx = (this.idx + 1) % this.frames.length
-      // clear line and rewrite
       process.stdout.write(`\r\x1b[K  ${c.dim}${this.label}${this.frames[this.idx]}${c.reset}`)
     }, 250)
   }
@@ -50,25 +47,21 @@ class Spinner {
       clearInterval(this.interval)
       this.interval = null
     }
-    // clear line, show cursor
     process.stdout.write(`\r\x1b[K`)
     process.stdout.write("\x1b[?25h")
   }
 }
 
-// global spinners
 let loadSpinner: Spinner | null = null
 let receiveSpinner: Spinner | null = null
 
 export const log = {
-  // header with goal
   header: (goal: string) => {
     console.log()
     console.log(`${c.yellow}${icons.play}${c.reset} ${goal}`)
     console.log()
   },
 
-  // config line (compact)
   config: (opts: { mo: string; model: string; headless: boolean; video: boolean; steps: number }) => {
     const parts = [
       `${c.dim}${opts.model}${c.reset}`,
@@ -80,31 +73,26 @@ export const log = {
     console.log()
   },
 
-  // plan output
   plan: (text: string) => {
     console.log(`${c.dim}${text}${c.reset}`)
     console.log()
   },
 
-  // step header (compact)
   step: (n: number, total: number, url: string) => {
     const shortUrl = url.length > 50 ? url.slice(0, 47) + "..." : url
     console.log(`${c.magenta}${icons.dot}${c.reset} ${c.bold}${n}/${total}${c.reset} ${c.dim}${shortUrl}${c.reset}`)
   },
 
-  // thought (one line)
   thought: (msg: string) => {
     const short = msg.length > 80 ? msg.slice(0, 77) + "..." : msg
     console.log(`  ${c.bold}${c.yellow}${icons.brain}${c.reset} ${c.gray}${short}${c.reset}`)
   },
 
-  // action
   action: (type: string, target?: string) => {
     const t = target ? ` ${c.dim}${target}${c.reset}` : ""
     console.log(`  ${c.blue}${icons.arrow}${c.reset} ${type}${t}`)
   },
 
-  // result (success)
   ok: (msg?: string) => {
     if (msg) {
       const short = msg.length > 60 ? msg.slice(0, 57) + "..." : msg
@@ -112,13 +100,11 @@ export const log = {
     }
   },
 
-  // result (error)
   fail: (msg: string) => {
     const short = msg.length > 60 ? msg.slice(0, 57) + "..." : msg
     console.log(`  ${c.red}${icons.cross}${c.reset} ${short}`)
   },
 
-  // final done
   done: (steps: number, reason?: string) => {
     console.log()
     console.log(`${c.green}${icons.check} done${c.reset} ${c.dim}in ${steps} steps${c.reset}`)
@@ -128,17 +114,14 @@ export const log = {
     }
   },
 
-  // video saved
   video: (path: string) => {
     console.log(`${c.dim}${icons.circle} video: ${path}${c.reset}`)
   },
 
-  // generic error
   error: (msg: string) => {
     console.error(`${c.red}${icons.cross} ${msg}${c.reset}`)
   },
 
-  // planning indicator
   planning: () => {
     process.stdout.write(`${c.dim}planning...${c.reset}`)
   },
@@ -147,7 +130,6 @@ export const log = {
     process.stdout.write(`\r${c.dim}planning... done${c.reset}\n\n`)
   },
 
-  // loading page spinner
   loadStart: () => {
     loadSpinner = new Spinner("load")
     loadSpinner.start()
@@ -160,7 +142,6 @@ export const log = {
     }
   },
 
-  // receiving AI response spinner
   receiveStart: () => {
     receiveSpinner = new Spinner("receive")
     receiveSpinner.start()
@@ -173,7 +154,6 @@ export const log = {
     }
   },
 
-  // opening browser spinner
   openStart: () => {
     loadSpinner = new Spinner("opening")
     loadSpinner.start()

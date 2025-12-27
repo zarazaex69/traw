@@ -2,14 +2,14 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod"
-import { Agent } from "./agent"
-import type { AgentConfig } from "./types"
+import { Agent } from "../agent/agent"
+import type { AgentConfig } from "../types"
 
 const defaultConfig: AgentConfig = {
   moUrl: process.env.TRAW_MO_URL || "http://localhost:8080",
   model: process.env.TRAW_MODEL || "glm-4.7",
   thinking: process.env.TRAW_THINKING !== "false",
-  headless: process.env.TRAW_HEADLESS !== "false", // headless by default for MCP
+  headless: process.env.TRAW_HEADLESS !== "false",
   recordVideo: process.env.TRAW_VIDEO === "true",
   maxSteps: parseInt(process.env.TRAW_MAX_STEPS || "20"),
 }
@@ -19,7 +19,6 @@ const server = new McpServer({
   version: "0.1.0",
 })
 
-// helper for logging
 function log(level: "debug" | "info" | "warning" | "error", message: string) {
   server.server.sendLoggingMessage({ level, data: message })
 }
@@ -48,7 +47,6 @@ server.tool(
       log("info", "Launching browser...")
       const result = await agent.run(goal)
 
-      // format history for response
       const steps = result.history.map((step, i) => {
         log("debug", `Step ${i + 1}: ${step.action.type} - ${step.result}`)
         return {

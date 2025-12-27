@@ -1,6 +1,6 @@
 import { firefox, type Browser, type Page, type BrowserContext } from "playwright"
 import { mkdir } from "node:fs/promises"
-import type { Action, PageState, AgentConfig } from "./types"
+import type { Action, PageState, AgentConfig } from "../types"
 
 export class BrowserController {
   private browser: Browser | null = null
@@ -34,18 +34,14 @@ export class BrowserController {
     this.page = await this.context.newPage()
   }
 
-  // wait for page to be fully loaded (including JS content)
   private async waitForContent(): Promise<void> {
     if (!this.page) return
 
     try {
-      // just wait for network to settle, don't stack multiple waits
       await Promise.race([
         this.page.waitForLoadState("networkidle", { timeout: 5000 }),
-        new Promise((r) => setTimeout(r, 3000)), // max 3s fallback
+        new Promise((r) => setTimeout(r, 3000)),
       ])
-
-      // tiny delay for JS frameworks
       await this.page.waitForTimeout(200)
     } catch {
       // ignore, page might be simple html
@@ -87,7 +83,6 @@ export class BrowserController {
   async getState(): Promise<PageState> {
     if (!this.page) throw new Error("browser not launched")
 
-    // wait for dynamic content to load
     await this.waitForContent()
 
     const url = this.page.url()
@@ -110,7 +105,6 @@ export class BrowserController {
 
         case "click":
           await this.page.click(action.selector!, { timeout: 5000 })
-          // short wait after click, don't block too long
           await this.page.waitForTimeout(300)
           return `clicked ${action.selector}`
 
@@ -148,21 +142,19 @@ export class BrowserController {
     return this.page.screenshot()
   }
 
-  // extract readable text content from page
+
   private async extractContent(): Promise<string> {
     if (!this.page) return ""
 
     return this.page.evaluate(() => {
       const sections: string[] = []
 
-      // get meta description
       const metaDesc = document.querySelector('meta[name="description"]')
       if (metaDesc) {
         const content = metaDesc.getAttribute("content")
         if (content) sections.push(`[meta] ${content}`)
       }
 
-      // get main headings with their content
       const mainContent = document.querySelector("main, article, .content, #content, [role='main']") || document.body
 
       const headings = mainContent.querySelectorAll("h1, h2, h3")
@@ -186,7 +178,6 @@ export class BrowserController {
       listItems.forEach((li) => {
         const text = (li as HTMLElement).innerText?.trim()
         if (text && text.length > 10 && text.length < 200) {
-          // skip if it's just a nav item
           if (!li.closest("nav, header, footer")) {
             sections.push(`• ${text}`)
           }
@@ -201,13 +192,11 @@ export class BrowserController {
         }
       })
 
-      // dedupe
       const unique = [...new Set(sections)]
       return unique.join("\n\n")
     })
   }
 
-  // extract only interactive elements with valid css selectors
   private async extractDom(): Promise<string> {
     if (!this.page) return ""
 
@@ -273,7 +262,6 @@ export class BrowserController {
         })
       })
 
-      // dedupe
       return [...new Set(elements)].join("\n")
     })
   }

@@ -1,4 +1,4 @@
-import type { ChatMessage } from "./types"
+import type { ChatMessage } from "../types"
 
 export class MoClient {
   private url: string
