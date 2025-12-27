@@ -3,7 +3,7 @@ name: Release Traw
 on:
   push:
     tags:
-      - 'traw-v*'
+      - 'v*'
 
 permissions:
   contents: write
@@ -23,7 +23,7 @@ jobs:
 
       - name: Get version
         id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/traw-v}" >> $GITHUB_OUTPUT
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
       - name: Update package version
         run: |
