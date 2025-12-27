@@ -22,10 +22,14 @@ export class MoClient {
     })
 
     if (!resp.ok) {
-      throw new Error(`mo error: ${resp.status} ${await resp.text()}`)
+      const body = await resp.text()
+      throw new Error(`mo error: ${resp.status} ${body}`)
     }
 
-    const data = await resp.json() as { choices: { message: { content: string } }[] }
+    const data = (await resp.json()) as {
+      choices: { message: { content: string } }[]
+    }
+
     return data.choices[0]?.message?.content ?? ""
   }
 }

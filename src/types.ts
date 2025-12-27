@@ -1,26 +1,25 @@
-// browser actions that AI can perform
-export type ActionType = 
-  | "click" 
-  | "type" 
-  | "scroll" 
-  | "goto" 
-  | "wait" 
+export type ActionType =
+  | "click"
+  | "type"
+  | "scroll"
+  | "goto"
+  | "wait"
   | "screenshot"
   | "done"
 
 export interface Action {
   type: ActionType
-  selector?: string      // css selector for click/type
-  text?: string          // text to type or url for goto
-  direction?: "up" | "down"  // scroll direction
-  reason: string         // why AI decided to do this
+  selector?: string
+  text?: string
+  direction?: "up" | "down"
+  reason: string
 }
 
 export interface PageState {
   url: string
   title: string
-  dom: string            // simplified DOM
-  screenshot?: string    // base64 screenshot (optional)
+  dom: string
+  screenshot?: string
 }
 
 export interface AgentStep {

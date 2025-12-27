@@ -2,7 +2,7 @@ import type { Action, AgentConfig, AgentStep, ChatMessage, PageState } from "./t
 import { BrowserController } from "./browser"
 import { MoClient } from "./mo-client"
 
-const SYSTEM_PROMPT = `You are a browser automation agent. You see the page state and decide what to do next.
+const systemPrompt = `You are a browser automation agent. You see the page state and decide what to do next.
 
 ACTIONS:
 - goto: navigate to URL
@@ -41,7 +41,7 @@ Respond with JSON only:
 
 When ALL steps complete, use "done" with full results in "reason".`
 
-const PLANNING_PROMPT = `You are a planning agent. Create a step-by-step plan to accomplish the user's goal using a web browser.
+const planningPrompt = `You are a planning agent. Create a step-by-step plan to accomplish the user's goal using a web browser.
 
 Rules:
 - Be specific about what to search, click, or navigate to
@@ -57,7 +57,7 @@ export class Agent {
   private config: AgentConfig
   private history: AgentStep[] = []
   private messages: ChatMessage[] = []
-  private plan: string = ""
+  private plan = ""
 
   constructor(config: AgentConfig) {
     this.config = config
@@ -65,29 +65,21 @@ export class Agent {
     this.mo = new MoClient(config.moUrl, config.model)
   }
 
-  private async createPlan(goal: string): Promise<string> {
-    const resp = await this.mo.chat([
-      { role: "system", content: PLANNING_PROMPT },
-      { role: "user", content: `Goal: ${goal}` },
-    ])
-    return resp
-  }
-
   async run(goal: string): Promise<AgentStep[]> {
     console.log(`\n[goal] ${goal}\n`)
-    
-    // create plan first
+
     console.log("[planning]...")
     this.plan = await this.createPlan(goal)
     console.log("\n" + this.plan + "\n")
-    
+
     await this.browser.launch()
-    
-    // start at duckduckgo
-    await this.browser.execute({ type: "goto", text: "https://html.duckduckgo.com/html/", reason: "start page" })
-    
-    // init conversation with plan
-    this.messages.push({ role: "system", content: SYSTEM_PROMPT })
+    await this.browser.execute({
+      type: "goto",
+      text: "https://html.duckduckgo.com/html/",
+      reason: "start page",
+    })
+
+    this.messages.push({ role: "system", content: systemPrompt })
     this.messages.push({
       role: "user",
       content: `Your task: ${goal}\n\nYour plan:\n${this.plan}\n\nFollow this plan step by step. You are now on DuckDuckGo search.`,
@@ -96,19 +88,19 @@ export class Agent {
     try {
       for (let step = 0; step < this.config.maxSteps; step++) {
         const state = await this.browser.getState()
-        
+
         console.log(`\n--- step ${step + 1} ---`)
         console.log(`url: ${state.url}`)
         console.log(`title: ${state.title}`)
-        
+
         const decision = await this.think(state)
-        
+
         console.log(`thought: ${decision.thought}`)
         console.log(`action: ${decision.action.type} - ${decision.action.reason}`)
-        
+
         const result = await this.browser.execute(decision.action)
         console.log(`result: ${result}`)
-        
+
         this.history.push({
           timestamp: Date.now(),
           thought: decision.thought,
@@ -121,8 +113,7 @@ export class Agent {
           break
         }
 
-        // small delay between actions
-        await new Promise(r => setTimeout(r, 500))
+        await new Promise((r) => setTimeout(r, 500))
       }
     } finally {
       const videoPath = await this.browser.close()
@@ -134,8 +125,14 @@ export class Agent {
     return this.history
   }
 
+  private async createPlan(goal: string): Promise<string> {
+    return this.mo.chat([
+      { role: "system", content: planningPrompt },
+      { role: "user", content: `Goal: ${goal}` },
+    ])
+  }
+
   private async think(state: PageState): Promise<{ thought: string; action: Action }> {
-    // add current state to conversation
     const stateMsg = `Current page:
 URL: ${state.url}
 Title: ${state.title}
@@ -148,27 +145,25 @@ What's your next action?`
     this.messages.push({ role: "user", content: stateMsg })
 
     const response = await this.mo.chat(this.messages)
-    
-    // parse JSON response
+
     try {
-      // extract JSON from response (handle markdown code blocks)
       let jsonStr = response
-      const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/)
-      if (jsonMatch) {
-        jsonStr = jsonMatch[1]
+
+      // extract json from markdown code block if present
+      const match = response.match(/```(?:json)?\s*([\s\S]*?)```/)
+      if (match) {
+        jsonStr = match[1]
       }
-      
+
       const parsed = JSON.parse(jsonStr.trim())
-      
       this.messages.push({ role: "assistant", content: response })
-      
+
       return {
         thought: parsed.thought || "thinking...",
         action: parsed.action,
       }
-    } catch (err) {
-      console.error("Failed to parse AI response:", response)
-      // fallback: wait and retry
+    } catch {
+      console.error("failed to parse AI response:", response)
       return {
         thought: "couldn't parse response, waiting...",
         action: { type: "wait", reason: "parse error" },
