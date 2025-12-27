@@ -33,6 +33,7 @@ export interface AgentStep {
 export interface AgentConfig {
   moUrl: string
   model: string
+  thinking: boolean
   headless: boolean
   recordVideo: boolean
   maxSteps: number

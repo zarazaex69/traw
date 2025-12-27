@@ -71,22 +71,23 @@ export class Agent {
   constructor(config: AgentConfig) {
     this.config = config
     this.browser = new BrowserController(config)
-    this.mo = new MoClient(config.moUrl, config.model)
+    this.mo = new MoClient(config.moUrl, config.model, config.thinking)
   }
 
-  async run(goal: string): Promise<AgentStep[]> {
-    log.info("goal", goal)
-
-    log.info("planning", "...")
+  async run(goal: string): Promise<{ history: AgentStep[]; video: string | null }> {
+    log.planning()
     this.plan = await this.createPlan(goal)
+    log.planDone()
     log.plan(this.plan)
 
+    log.openStart()
     await this.browser.launch()
     await this.browser.execute({
       type: "goto",
       text: "https://html.duckduckgo.com/html/",
       reason: "start page",
     })
+    log.openStop()
 
     this.messages.push({ role: "system", content: systemPrompt })
     this.messages.push({
@@ -94,21 +95,30 @@ export class Agent {
       content: `Your task: ${goal}\n\nYour plan:\n${this.plan}\n\nFollow this plan step by step. You are now on DuckDuckGo search.`,
     })
 
+    let finalReason = ""
+
     try {
       for (let step = 0; step < this.config.maxSteps; step++) {
+        log.loadStart()
         const state = await this.browser.getState()
+        log.loadStop()
 
-        log.step(step + 1)
-        log.dim("url", state.url)
-        log.dim("title", state.title)
+        log.step(step + 1, this.config.maxSteps, state.url)
 
+        log.receiveStart()
         const decision = await this.think(state)
+        log.receiveStop()
 
         log.thought(decision.thought)
-        log.action(decision.action.type, decision.action.reason)
+        log.action(decision.action.type, decision.action.selector || decision.action.text)
 
         const result = await this.browser.execute(decision.action)
-        log.result(result)
+
+        if (result.startsWith("error:")) {
+          log.fail(result)
+        } else {
+          log.ok()
+        }
 
         this.history.push({
           timestamp: Date.now(),
@@ -118,20 +128,17 @@ export class Agent {
         })
 
         if (decision.action.type === "done") {
-          log.done()
+          finalReason = decision.action.reason
           break
         }
 
-        await new Promise((r) => setTimeout(r, 500))
+        await new Promise((r) => setTimeout(r, 300))
       }
     } finally {
       const videoPath = await this.browser.close()
-      if (videoPath) {
-        log.info("video", videoPath)
-      }
+      log.done(this.history.length, finalReason)
+      return { history: this.history, video: videoPath }
     }
-
-    return this.history
   }
 
   private async createPlan(goal: string): Promise<string> {

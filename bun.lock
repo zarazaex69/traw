@@ -5,7 +5,7 @@
     "": {
       "name": "traw",
       "dependencies": {
-        "playwright": "^1.40.0",
+        "playwright": "^1.52.0",
       },
       "devDependencies": {
         "@types/bun": "latest",

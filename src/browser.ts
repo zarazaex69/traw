@@ -1,4 +1,4 @@
-import { chromium, type Browser, type Page, type BrowserContext } from "playwright"
+import { firefox, type Browser, type Page, type BrowserContext } from "playwright"
 import { mkdir } from "node:fs/promises"
 import type { Action, PageState, AgentConfig } from "./types"
 
@@ -13,12 +13,14 @@ export class BrowserController {
   }
 
   async launch(): Promise<void> {
-    this.browser = await chromium.launch({
+    this.browser = await firefox.launch({
       headless: this.config.headless,
     })
 
     const contextOpts: any = {
       viewport: { width: 1280, height: 720 },
+      locale: "en-US",
+      timezoneId: "Europe/Moscow",
     }
 
     if (this.config.recordVideo) {
@@ -37,22 +39,16 @@ export class BrowserController {
     if (!this.page) return
 
     try {
-      // wait for network to be idle
-      await this.page.waitForLoadState("networkidle", { timeout: 10000 }).catch(() => {})
+      // just wait for network to settle, don't stack multiple waits
+      await Promise.race([
+        this.page.waitForLoadState("networkidle", { timeout: 5000 }),
+        new Promise((r) => setTimeout(r, 3000)), // max 3s fallback
+      ])
 
-      // wait for DOM content
-      await this.page.waitForLoadState("domcontentloaded", { timeout: 5000 }).catch(() => {})
-
-      // extra wait for JS frameworks to render
-      await this.page.waitForTimeout(800)
-
-      // wait for body to have content
-      await this.page.waitForFunction(
-        () => document.body && document.body.innerText.length > 100,
-        { timeout: 5000 }
-      ).catch(() => {})
+      // tiny delay for JS frameworks
+      await this.page.waitForTimeout(200)
     } catch {
-      // ignore timeout errors, page might be simple html
+      // ignore, page might be simple html
     }
   }
 
@@ -108,13 +104,14 @@ export class BrowserController {
     try {
       switch (action.type) {
         case "goto":
-          await this.page.goto(action.text!, { waitUntil: "domcontentloaded", timeout: 20000 })
+          await this.page.goto(action.text!, { waitUntil: "domcontentloaded", timeout: 15000 })
           await this.waitForContent()
           return `navigated to ${action.text}`
 
         case "click":
-          await this.page.click(action.selector!, { timeout: 10000 })
-          await this.waitForContent()
+          await this.page.click(action.selector!, { timeout: 5000 })
+          // short wait after click, don't block too long
+          await this.page.waitForTimeout(300)
           return `clicked ${action.selector}`
 
         case "type":

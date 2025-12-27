@@ -6,6 +6,7 @@ import { log } from "./log"
 const defaultConfig: AgentConfig = {
   moUrl: "http://localhost:8080",
   model: "glm-4.7",
+  thinking: true,
   headless: false,
   recordVideo: false,
   maxSteps: 20,
@@ -39,6 +40,11 @@ async function main() {
       config.recordVideo = true
       continue
     }
+    if (arg === "--fast") {
+      config.model = "0727-106B-API"
+      config.thinking = false
+      continue
+    }
     if (arg.startsWith("--steps=")) {
       config.maxSteps = parseInt(arg.split("=")[1])
       continue
@@ -58,21 +64,22 @@ async function main() {
     process.exit(1)
   }
 
-  log.info("traw", "starting agent...")
-  log.dim("  mo", config.moUrl)
-  log.dim("  headless", String(config.headless))
-  log.dim("  video", String(config.recordVideo))
-  log.dim("  max steps", String(config.maxSteps))
+  log.header(goal)
+  log.config({
+    mo: config.moUrl,
+    model: config.model,
+    headless: config.headless,
+    video: config.recordVideo,
+    steps: config.maxSteps,
+  })
 
   const agent = new Agent(config)
 
   try {
-    const history = await agent.run(goal)
+    const result = await agent.run(goal)
 
-    log.done(`steps: ${history.length}`)
-    if (history.length > 0) {
-      const last = history[history.length - 1]
-      log.dim("  final", `${last.action.type} - ${last.action.reason}`)
+    if (result.video) {
+      log.video(result.video)
     }
   } catch (err: any) {
     log.error(err.message)
@@ -88,6 +95,7 @@ Usage:
   traw run "your goal here"
 
 Options:
+  --fast        use fast model (glm-4-flash, no thinking)
   --headless    run without visible browser
   --video       enable video recording
   --steps=N     max steps (default: 20)
@@ -95,7 +103,8 @@ Options:
 
 Examples:
   traw run "find the weather in Moscow"
-  traw run --video "search for bun.js documentation"
+  traw run --fast "quick search for bun.js"
+  traw run --video "search for documentation"
 `)
 }
 

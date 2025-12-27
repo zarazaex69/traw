@@ -3,10 +3,12 @@ import type { ChatMessage } from "./types"
 export class MoClient {
   private url: string
   private model: string
+  private thinking: boolean
 
-  constructor(url: string, model: string) {
+  constructor(url: string, model: string, thinking: boolean) {
     this.url = url
     this.model = model
+    this.thinking = thinking
   }
 
   async chat(messages: ChatMessage[]): Promise<string> {
@@ -17,7 +19,7 @@ export class MoClient {
         model: this.model,
         messages,
         stream: false,
-        thinking: false,
+        thinking: this.thinking,
       }),
     })
 
