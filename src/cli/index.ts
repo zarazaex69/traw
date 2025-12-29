@@ -5,7 +5,7 @@ import { log } from "../utils/log"
 import { printHelp } from "./help"
 
 const defaultConfig: AgentConfig = {
-  moUrl: "http://localhost:8080",
+  moUrl: "http://localhost:8804",
   model: "glm-4.7",
   thinking: true,
   headless: false,
