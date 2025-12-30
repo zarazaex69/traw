@@ -29,7 +29,11 @@ ACTIONS (use index to target elements):
 OUTPUT (JSON only, no markdown wrapper):
 {"thought":"English reasoning here","action":{"type":"click","index":0}}`
 
-export const planningPrompt = `Create short numbered plan (max 5 steps) to accomplish goal via browser. Start from DuckDuckGo search.
+export const planningPrompt = `Create short numbered plan to accomplish goal via browser. Start from DuckDuckGo search.
+
+IMPORTANT: Plan must fit within the given step limit. Each navigation/click/type = 1 step.
+- If max steps is low (5-10): be very direct, skip optional steps
+- If max steps is high (20+): can be more thorough
 
 LANGUAGE RULES:
 - Plan steps: ALWAYS write in English

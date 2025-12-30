@@ -45,7 +45,7 @@ export class Agent {
     this.messages.push({ role: "system", content: systemPrompt })
     this.messages.push({
       role: "user",
-      content: `Your task: ${goal}\n\nYour plan:\n${this.plan}\n\nFollow this plan step by step. You are now on DuckDuckGo search.`,
+      content: `Your task: ${goal}\n\nYour plan:\n${this.plan}\n\nYou have ${this.config.maxSteps} steps maximum. Be efficient. You are now on DuckDuckGo search.`,
     })
 
     let finalReason = ""
@@ -108,7 +108,7 @@ export class Agent {
   private async createPlan(goal: string): Promise<string> {
     return this.mo.chat([
       { role: "system", content: planningPrompt },
-      { role: "user", content: `Goal: ${goal}` },
+      { role: "user", content: `Goal: ${goal}\nMax steps available: ${this.config.maxSteps}` },
     ])
   }
 
