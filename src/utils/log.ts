@@ -1,4 +1,20 @@
 // minimal cli output with unicode symbols
+import { marked } from "marked"
+import TerminalRenderer from "marked-terminal"
+
+// setup terminal renderer
+marked.setOptions({
+  renderer: new TerminalRenderer()
+})
+
+function renderMd(text: string): string {
+  try {
+    const rendered = marked.parse(text) as string
+    return rendered.trim()
+  } catch {
+    return text
+  }
+}
 
 const c = {
   reset: "\x1b[0m",
@@ -76,7 +92,7 @@ export const log = {
   },
 
   plan: (text: string) => {
-    console.log(`${c.dim}${text}${c.reset}`)
+    console.log(renderMd(text))
     console.log()
   },
 
@@ -112,7 +128,7 @@ export const log = {
     console.log(`${c.green}${icons.check} done${c.reset} ${c.dim}in ${steps} steps${c.reset}`)
     if (reason) {
       console.log()
-      console.log(reason)
+      console.log(renderMd(reason))
     }
   },
 
