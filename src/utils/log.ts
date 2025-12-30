@@ -116,6 +116,14 @@ export const log = {
     }
   },
 
+  stats: (totalMs: number, aiMs: number, browserMs: number) => {
+    const fmt = (ms: number) => (ms / 1000).toFixed(1) + "s"
+    console.log()
+    console.log(`${c.dim}total:${c.reset}   ${fmt(totalMs)}`)
+    console.log(`${c.dim}neuro:${c.reset}      ${fmt(aiMs)} ${c.dim}(${Math.round(aiMs / totalMs * 100)}%)${c.reset}`)
+    console.log(`${c.dim}browser:${c.reset} ${fmt(browserMs)} ${c.dim}(${Math.round(browserMs / totalMs * 100)}%)${c.reset}`)
+  },
+
   video: (path: string) => {
     console.log(`${c.dim}${icons.circle} video: ${path}${c.reset}`)
   },

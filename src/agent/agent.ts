@@ -12,6 +12,11 @@ export class Agent {
   private messages: ChatMessage[] = []
   private plan = ""
 
+  // time tracking
+  private aiTime = 0
+  private browserTime = 0
+  private startTime = 0
+
   constructor(config: AgentConfig) {
     this.config = config
     this.browser = new BrowserController(config)
@@ -19,8 +24,12 @@ export class Agent {
   }
 
   async run(goal: string): Promise<{ history: AgentStep[]; video: string | null }> {
+    this.startTime = Date.now()
+
+    const planStart = Date.now()
     log.planning()
     this.plan = await this.createPlan(goal)
+    this.aiTime += Date.now() - planStart
     log.planDone()
     log.plan(this.plan)
 
@@ -44,15 +53,19 @@ export class Agent {
 
     try {
       for (let step = 0; step < this.config.maxSteps; step++) {
+        const loadStart = Date.now()
         log.loadStart()
         const state = await this.browser.getState(this.config.useVision)
         log.loadStop()
+        this.browserTime += Date.now() - loadStart
 
         log.step(step + 1, this.config.maxSteps, state.url)
 
+        const thinkStart = Date.now()
         log.receiveStart()
         const decision = await this.think(state)
         log.receiveStop()
+        this.aiTime += Date.now() - thinkStart
 
         log.thought(decision.thought)
         const target = decision.action.index !== undefined 
@@ -60,7 +73,9 @@ export class Agent {
           : decision.action.text
         log.action(decision.action.type, target)
 
+        const execStart = Date.now()
         const result = await this.browser.execute(decision.action)
+        this.browserTime += Date.now() - execStart
 
         if (result.startsWith("error:")) {
           log.fail(result)
@@ -84,7 +99,9 @@ export class Agent {
       }
     } finally {
       const videoPath = await this.browser.close()
+      const totalTime = Date.now() - this.startTime
       log.done(this.history.length, finalReason)
+      log.stats(totalTime, this.aiTime, this.browserTime)
       return { history: this.history, video: videoPath }
     }
   }
