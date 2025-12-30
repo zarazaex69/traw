@@ -29,7 +29,13 @@ export class MoClient {
     }
 
     const data = (await resp.json()) as {
-      choices: { message: { content: string } }[]
+      choices: { message: { content: string }; finish_reason: string }[]
+    }
+
+    // debug: check if response was truncated
+    const finish = data.choices[0]?.finish_reason
+    if (finish && finish !== "stop") {
+      console.warn(`[mo] finish_reason: ${finish} (response may be truncated)`)
     }
 
     return data.choices[0]?.message?.content ?? ""

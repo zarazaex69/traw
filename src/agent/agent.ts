@@ -176,9 +176,11 @@ What's your next action?`
         action: parsed.action,
       }
     } catch (err) {
-      // debug parse errors - fire and forget
+      // debug parse errors - append to log (fire and forget)
       const logEntry = `\n--- ${new Date().toISOString()} ---\nError: ${err}\nResponse:\n${response}\n`
-      Bun.write("agent-errors.log", logEntry).catch(() => {})
+      import("fs").then(fs => {
+        fs.appendFileSync("agent-errors.log", logEntry)
+      }).catch(() => {})
       return null
     }
   }
