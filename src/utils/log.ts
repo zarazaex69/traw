@@ -1,16 +1,9 @@
 // minimal cli output with unicode symbols
-import { marked } from "marked"
-import TerminalRenderer from "marked-terminal"
-
-// setup terminal renderer
-marked.setOptions({
-  renderer: new TerminalRenderer()
-})
+import markdown from "cli-markdown"
 
 function renderMd(text: string): string {
   try {
-    const rendered = marked.parse(text) as string
-    return rendered.trim()
+    return markdown(text).trim()
   } catch {
     return text
   }

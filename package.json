@@ -14,8 +14,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.1",
-    "marked": "^17.0.1",
-    "marked-terminal": "^7.3.0",
+    "cli-markdown": "^3.5.1",
     "playwright": "^1.52.0",
     "zod": "^4.2.1"
   },
