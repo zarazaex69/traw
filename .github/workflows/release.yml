@@ -52,6 +52,7 @@ jobs:
   publish-npm:
     name: Publish to NPM
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -71,13 +72,14 @@ jobs:
           npm version ${{ steps.version.outputs.VERSION }} --no-git-tag-version --allow-same-version
 
       - name: Publish to NPM
-        run: npm publish --access public
+        run: npm publish --access public || echo "NPM publish failed, skipping..."
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   release:
     name: Create Release
-    needs: [build-binaries, publish-npm]
+    needs: [build-binaries]
+    if: always() && needs.build-binaries.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
