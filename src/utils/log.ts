@@ -17,7 +17,7 @@ const icons = {
   arrow: "→",
   check: "✓",
   cross: "✗",
-  dot: "●",
+  dot: "(0)",
   circle: "○",
   brain: "!",
   play: ">",
@@ -54,6 +54,7 @@ class Spinner {
 
 let loadSpinner: Spinner | null = null
 let receiveSpinner: Spinner | null = null
+let openSpinner: Spinner | null = null
 
 export const log = {
   header: (goal: string) => {
@@ -156,14 +157,14 @@ export const log = {
   },
 
   openStart: () => {
-    loadSpinner = new Spinner("opening")
-    loadSpinner.start()
+    openSpinner = new Spinner("opening")
+    openSpinner.start()
   },
 
   openStop: () => {
-    if (loadSpinner) {
-      loadSpinner.stop()
-      loadSpinner = null
+    if (openSpinner) {
+      openSpinner.stop()
+      openSpinner = null
     }
   },
 }

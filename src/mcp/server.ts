@@ -13,6 +13,7 @@ const defaultConfig: AgentConfig = {
   recordVideo: process.env.TRAW_VIDEO === "true",
   maxSteps: parseInt(process.env.TRAW_MAX_STEPS || "20"),
   useVision: process.env.TRAW_VISION === "true",
+  debug: process.env.TRAW_DEBUG === "true",
 }
 
 const server = new McpServer({

@@ -4,12 +4,11 @@ export type ActionType =
   | "scroll"
   | "goto"
   | "wait"
-  | "screenshot"
   | "done"
 
 export interface Action {
   type: ActionType
-  selector?: string
+  index?: number
   text?: string
   direction?: "up" | "down"
   reason: string
@@ -18,9 +17,8 @@ export interface Action {
 export interface PageState {
   url: string
   title: string
-  dom: string
-  content?: string
-  screenshot?: string // base64 data url
+  text: string
+  screenshot?: string
 }
 
 export interface AgentStep {
@@ -37,7 +35,8 @@ export interface AgentConfig {
   headless: boolean
   recordVideo: boolean
   maxSteps: number
-  useVision: boolean // send screenshots to AI
+  useVision: boolean
+  debug: boolean
 }
 
 export interface ChatMessage {
@@ -48,7 +47,5 @@ export interface ChatMessage {
 export interface MessageContent {
   type: "text" | "image_url"
   text?: string
-  image_url?: {
-    url: string
-  }
+  image_url?: { url: string }
 }

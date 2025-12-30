@@ -12,6 +12,7 @@ const defaultConfig: AgentConfig = {
   recordVideo: false,
   maxSteps: 20,
   useVision: false,
+  debug: false,
 }
 
 async function main() {
@@ -49,6 +50,10 @@ async function main() {
     if (arg === "--fast") {
       config.model = "0727-106B-API"
       config.thinking = false
+      continue
+    }
+    if (arg === "--debug") {
+      config.debug = true
       continue
     }
     if (arg.startsWith("--steps=")) {

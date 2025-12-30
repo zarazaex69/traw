@@ -55,7 +55,10 @@ export class Agent {
         log.receiveStop()
 
         log.thought(decision.thought)
-        log.action(decision.action.type, decision.action.selector || decision.action.text)
+        const target = decision.action.index !== undefined 
+          ? `[${decision.action.index}] ${decision.action.text || ""}`
+          : decision.action.text
+        log.action(decision.action.type, target)
 
         const result = await this.browser.execute(decision.action)
 
@@ -94,20 +97,20 @@ export class Agent {
   }
 
   private async think(state: PageState): Promise<{ thought: string; action: Action }> {
-    const contentSection = state.content
-      ? `\nPage content:\n${state.content}\n`
-      : ""
-
-    const stateText = `Current page:
-URL: ${state.url}
+    const stateText = `URL: ${state.url}
 Title: ${state.title}
-${contentSection}
-Interactive elements:
-${state.dom}
+
+Elements:
+${state.text}
 
 What's your next action?`
 
-    // build message with or without screenshot
+    if (this.config.debug) {
+      console.log(`\n--- DOM elements ---`)
+      console.log(state.text)
+      console.log(`--------------------\n`)
+    }
+
     if (state.screenshot) {
       const content: MessageContent[] = [
         { type: "image_url", image_url: { url: state.screenshot } },
@@ -118,29 +121,50 @@ What's your next action?`
       this.messages.push({ role: "user", content: stateText })
     }
 
-    const response = await this.mo.chat(this.messages)
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const response = await this.mo.chat(this.messages)
+      const parsed = this.parseResponse(response)
 
+      if (parsed) {
+        this.messages.push({ role: "assistant", content: response })
+        return parsed
+      }
+
+      if (attempt < 2) {
+        log.fail(`parse error, retry ${attempt + 2}/3`)
+        this.messages.push({ role: "assistant", content: response })
+        this.messages.push({ role: "user", content: "Invalid JSON. Reply with valid JSON only, no markdown." })
+      }
+    }
+
+    return {
+      thought: "failed to parse response",
+      action: { type: "wait", reason: "parse error" },
+    }
+  }
+
+  private parseResponse(response: string): { thought: string; action: Action } | null {
     try {
       let jsonStr = response
 
+      // try extract from markdown block
       const match = response.match(/```(?:json)?\s*([\s\S]*?)```/)
       if (match) {
         jsonStr = match[1]
       }
 
       const parsed = JSON.parse(jsonStr.trim())
-      this.messages.push({ role: "assistant", content: response })
+      if (!parsed.action?.type) return null
 
       return {
         thought: parsed.thought || "thinking...",
         action: parsed.action,
       }
-    } catch {
-      console.error("failed to parse AI response:", response)
-      return {
-        thought: "couldn't parse response, waiting...",
-        action: { type: "wait", reason: "parse error" },
-      }
+    } catch (err) {
+      // debug parse errors - fire and forget
+      const logEntry = `\n--- ${new Date().toISOString()} ---\nError: ${err}\nResponse:\n${response}\n`
+      Bun.write("agent-errors.log", logEntry).catch(() => {})
+      return null
     }
   }
 }
