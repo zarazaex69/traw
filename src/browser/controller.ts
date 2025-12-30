@@ -90,7 +90,7 @@ export class BrowserController {
       const items: string[] = []
       const selector = 'a[href], button, input, textarea, select, [role="button"], [onclick]'
       
-      document.querySelectorAll(selector).forEach((el, idx) => {
+      document.querySelectorAll(selector).forEach((el) => {
         const node = el as HTMLElement
         if (node.offsetParent === null) return // skip hidden
         

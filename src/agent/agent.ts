@@ -2,7 +2,7 @@ import type { Action, AgentConfig, AgentStep, ChatMessage, MessageContent, PageS
 import { BrowserController } from "../browser/controller"
 import { MoClient } from "../api/mo-client"
 import { log } from "../utils/log"
-import { systemPrompt, systemPromptVision, planningPrompt } from "./prompts"
+import { systemPrompt, planningPrompt } from "./prompts"
 
 export class Agent {
   private browser: BrowserController
@@ -42,8 +42,7 @@ export class Agent {
     })
     log.openStop()
 
-    const prompt = this.config.useVision ? systemPromptVision : systemPrompt
-    this.messages.push({ role: "system", content: prompt })
+    this.messages.push({ role: "system", content: systemPrompt })
     this.messages.push({
       role: "user",
       content: `Your task: ${goal}\n\nYour plan:\n${this.plan}\n\nFollow this plan step by step. You are now on DuckDuckGo search.`,

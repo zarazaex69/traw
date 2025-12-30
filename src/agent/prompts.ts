@@ -11,6 +11,4 @@ ACTIONS (use index to target elements):
 OUTPUT (JSON only, no markdown):
 {"thought":"reasoning","action":{"type":"click","index":0}}`
 
-export const systemPromptVision = systemPrompt
-
 export const planningPrompt = `Create short numbered plan (max 5 steps) to accomplish goal via browser. Start from DuckDuckGo search. No JSON.`
