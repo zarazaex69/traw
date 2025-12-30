@@ -1,4 +1,3 @@
-// minimal cli output with unicode symbols
 import { markdown } from "markdownly.js"
 
 let silent = false
