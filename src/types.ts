@@ -37,6 +37,7 @@ export interface AgentConfig {
   maxSteps: number
   useVision: boolean
   debug: boolean
+  jsonOutput: boolean
 }
 
 export interface ChatMessage {

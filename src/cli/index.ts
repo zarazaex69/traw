@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { Agent } from "../agent/agent"
 import type { AgentConfig } from "../types"
-import { log } from "../utils/log"
+import { log, setSilent } from "../utils/log"
 import { printHelp } from "./help"
 
 const defaultConfig: AgentConfig = {
@@ -13,6 +13,7 @@ const defaultConfig: AgentConfig = {
   maxSteps: 20,
   useVision: false,
   debug: false,
+  jsonOutput: false,
 }
 
 async function main() {
@@ -60,6 +61,10 @@ async function main() {
       config.debug = true
       continue
     }
+    if (arg === "--json") {
+      config.jsonOutput = true
+      continue
+    }
     if (arg.startsWith("--steps=")) {
       config.maxSteps = parseInt(arg.split("=")[1])
       continue
@@ -79,25 +84,46 @@ async function main() {
     process.exit(1)
   }
 
-  log.header(goal)
-  log.config({
-    mo: config.moUrl,
-    model: config.model,
-    headless: config.headless,
-    video: config.recordVideo,
-    vision: config.useVision,
-    steps: config.maxSteps,
-  })
+  if (!config.jsonOutput) {
+    log.header(goal)
+    log.config({
+      mo: config.moUrl,
+      model: config.model,
+      headless: config.headless,
+      video: config.recordVideo,
+      vision: config.useVision,
+      steps: config.maxSteps,
+    })
+  } else {
+    setSilent(true)
+  }
 
   const agent = new Agent(config)
 
   try {
     const result = await agent.run(goal)
 
-    if (result.video) {
+    if (config.jsonOutput) {
+      const output = {
+        success: true,
+        goal,
+        steps: result.history,
+        video: result.video,
+      }
+      console.log(JSON.stringify(output))
+    } else if (result.video) {
       log.video(result.video)
     }
   } catch (err: any) {
+    if (config.jsonOutput) {
+      const output = {
+        success: false,
+        goal,
+        error: err.message,
+      }
+      console.log(JSON.stringify(output))
+      process.exit(1)
+    }
     log.error(err.message)
     process.exit(1)
   }
