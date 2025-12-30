@@ -7,7 +7,8 @@ Usage:
 
 Options:
   --fast        use fast model (glm-4-flash, no thinking)
-  --headless    run without visible browser
+  --headless       run without visible browser (default)
+  --headed         show browser window
   --video       enable video recording
   --vision      send screenshots to AI (visual mode)
   --steps=N     max steps (default: 20)

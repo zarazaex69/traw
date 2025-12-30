@@ -8,7 +8,7 @@ const defaultConfig: AgentConfig = {
   moUrl: "http://localhost:8804",
   model: "glm-4.7",
   thinking: true,
-  headless: false,
+  headless: true,
   recordVideo: false,
   maxSteps: 20,
   useVision: false,
@@ -37,6 +37,10 @@ async function main() {
 
     if (arg === "--headless") {
       config.headless = true
+      continue
+    }
+    if (arg === "--no-headless" || arg === "--headed") {
+      config.headless = false
       continue
     }
     if (arg === "--video") {
