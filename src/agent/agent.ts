@@ -2,6 +2,7 @@ import type { Action, AgentConfig, AgentStep, ChatMessage, MessageContent, PageS
 import { BrowserController } from "../browser/controller"
 import { MoClient } from "../api/mo-client"
 import { log } from "../utils/log"
+import { checkNotify, notify } from "../utils/notify"
 import { systemPrompt, planningPrompt } from "./prompts"
 
 export class Agent {
@@ -25,6 +26,9 @@ export class Agent {
 
   async run(goal: string): Promise<{ history: AgentStep[]; video: string | null }> {
     this.startTime = Date.now()
+
+    // check notify-send availability once at start
+    await checkNotify()
 
     const planStart = Date.now()
     log.planning()
@@ -101,6 +105,10 @@ export class Agent {
       const totalTime = Date.now() - this.startTime
       log.done(this.history.length, finalReason)
       log.stats(totalTime, this.aiTime, this.browserTime)
+
+      // send desktop notification
+      await notify("Agent done", `${this.history.length} steps completed`)
+
       return { history: this.history, video: videoPath }
     }
   }
