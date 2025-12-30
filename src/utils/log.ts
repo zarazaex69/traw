@@ -1,5 +1,5 @@
 // minimal cli output with unicode symbols
-import markdown from "cli-markdown"
+import { markdown } from "markdownly.js"
 
 function renderMd(text: string): string {
   try {
