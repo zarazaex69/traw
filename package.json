@@ -10,11 +10,12 @@
   "scripts": {
     "traw": "bun run src/cli/index.ts",
     "mcp": "bun run src/mcp/server.ts",
+    "build": "bun build src/cli/index.ts --outfile=dist/traw --target=bun --compile --external=electron --external=chromium-bidi",
     "postinstall": "bunx playwright install firefox"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.1",
-    "cli-markdown": "^3.5.1",
+    "markdownly.js": "^1.1.0",
     "playwright": "^1.52.0",
     "zod": "^4.2.1"
   },
