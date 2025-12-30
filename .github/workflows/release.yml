@@ -96,11 +96,9 @@ jobs:
       - name: Prepare binaries
         run: |
           cd binaries
-          chmod +x */traw-*
-          for dir in */; do
-            name=$(basename "$dir")
-            mv "$dir/$name" "./$name"
-          done
+          find . -type f -name "traw-*" -exec chmod +x {} \;
+          find . -type f -name "traw-*" -exec mv {} . \; 2>/dev/null || true
+          rm -rf traw-*/
           ls -la
 
       - name: Create GitHub Release
