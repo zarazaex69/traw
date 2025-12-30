@@ -7,17 +7,27 @@
 ![Bun](https://img.shields.io/badge/-Bun-0D1117?style=flat-square&logo=Bun&logoColor=F3E6D8)
 ![License](https://img.shields.io/badge/license-BSD--2--Clause-0D1117?style=flat-square&logo=open-source-initiative&logoColor=green&labelColor=0D1117)
 
+
+<details>
+<summary>🚨 Warning </summary>
+🚨 This project uses reverse engineering api z.ai, do not use it for anything because of serious/personal data, it is just a toy - not a tool 
+</details>
+
 </div>
 
+
 ## About
+
+
 
 Traw is a simple and fast neuro agent that browses the internet instead of you
 
 ## Fast Start
 
+
 ```bash
  # start the traw
-bun run traw run "your goal" // re.. goal -> you real goal... not mock... you get the idea... 
+bun run traw run "your goal"
 ```
 
 <div align="center">
