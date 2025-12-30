@@ -65,7 +65,27 @@ export class BrowserController {
     const url = this.page.url()
     const title = await this.page.title()
 
-    // extract interactive elements with indices
+    const pageText = await this.page.evaluate(() => {
+      const texts: string[] = []
+      const textSelector = "h1, h2, h3, h4, h5, h6, p, li, blockquote, td, th, figcaption, summary"
+      
+      document.querySelectorAll(textSelector).forEach((el) => {
+        const node = el as HTMLElement
+        if (node.offsetParent === null) return // skip hidden
+        
+        const text = node.innerText?.trim()
+        if (!text || text.length < 3) return
+        
+        const tag = el.tagName.toLowerCase()
+        const prefix = tag.startsWith("h") ? `[${tag}]` : ""
+        texts.push(`${prefix} ${text.slice(0, 200)}`)
+      })
+      
+      // dedupe and limit
+      const unique = [...new Set(texts)]
+      return unique.slice(0, 30).join("\n")
+    }).catch(() => "")
+
     const elements = await this.page.evaluate(() => {
       const items: string[] = []
       const selector = 'a[href], button, input, textarea, select, [role="button"], [onclick]'
@@ -95,6 +115,9 @@ export class BrowserController {
       
       return items.join("\n")
     }).catch(() => "")
+    
+    // combine text + interactive elements
+    const combined = [pageText, elements].filter(Boolean).join("\n\n")
 
     let screenshot: string | undefined
     if (includeScreenshot) {
@@ -105,7 +128,7 @@ export class BrowserController {
     return {
       url,
       title,
-      text: elements,
+      text: combined,
       screenshot,
     }
   }

@@ -106,9 +106,7 @@ ${state.text}
 What's your next action?`
 
     if (this.config.debug) {
-      console.log(`\n--- DOM elements ---`)
-      console.log(state.text)
-      console.log(`--------------------\n`)
+      console.log("\n" + state.text)
     }
 
     if (state.screenshot) {
