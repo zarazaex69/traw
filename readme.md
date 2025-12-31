@@ -26,8 +26,21 @@ Traw is a simple and fast neuro agent that browses the internet instead of you
 
 
 ```bash
-  
+# install the traw
+git clone https://github.com/zarazaex69/traw
+cd traw
+bun install
 
+# auth the traw 
+bun run traw auth
+ # mo server not found. install mo? [Y/n] Y 
+bun run traw auth
+```
+<div align="center">
+  <img src="assets/auth.gif" alt="auth" style="border-radius: 3px;"/>
+</div>
+
+```bash
  # start the traw
 bun run traw run "your goal"
 ```
