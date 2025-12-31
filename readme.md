@@ -17,7 +17,7 @@ This project uses reverse engineering api z.ai, do not use it for anything becau
 
 
 ## About
-
+Plz Give Star
 
 
 Traw is a simple and fast neuro agent that browses the internet instead of you
