@@ -93,6 +93,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: binaries
+          merge-multiple: true
 
       - name: Get version
         id: version
@@ -101,9 +102,7 @@ jobs:
       - name: Prepare binaries
         run: |
           cd binaries
-          find . -type f -name "traw-*" -exec chmod +x {} \;
-          find . -type f -name "traw-*" -exec mv {} . \; 2>/dev/null || true
-          rm -rf traw-*/
+          chmod +x traw-*
           ls -la
 
       - name: Create GitHub Release
