@@ -6,6 +6,7 @@ out
 dist
 *.tgz
 build
+tiktoken/
 
 # code coverage
 coverage
