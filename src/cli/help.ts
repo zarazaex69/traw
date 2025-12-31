@@ -22,6 +22,9 @@ Options:
   --vision      send screenshots to AI (visual mode)
   --steps=N     max steps (default: 20)
   --mo=URL      mo server url (default: http://localhost:8804)
+  --api=URL     custom OpenAI-compatible API url (bypasses mo)
+  --api-key=KEY API key for custom endpoint (or use OPENAI_API_KEY env)
+  --model=NAME  model name (default: glm-4.7)
   -v, --version show version
 
 Examples:
@@ -29,5 +32,6 @@ Examples:
   traw run "find the weather in Moscow"
   traw run --fast "quick search for bun.js"
   traw run --video "search for documentation"
+  traw run --api=https://api.openai.com --model=gpt-4o "search for news"
 `)
 }

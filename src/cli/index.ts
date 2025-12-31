@@ -11,6 +11,8 @@ const DEFAULT_MO_PORT = 8804
 
 const defaultConfig: AgentConfig = {
   moUrl: `http://localhost:${DEFAULT_MO_PORT}`,
+  apiUrl: undefined,
+  apiKey: process.env.OPENAI_API_KEY || process.env.API_KEY,
   model: "glm-4.7",
   thinking: true,
   headless: true,
@@ -207,6 +209,18 @@ async function main() {
       config.moUrl = arg.split("=")[1]
       continue
     }
+    if (arg.startsWith("--api=")) {
+      config.apiUrl = arg.split("=")[1]
+      continue
+    }
+    if (arg.startsWith("--api-key=")) {
+      config.apiKey = arg.split("=")[1]
+      continue
+    }
+    if (arg.startsWith("--model=")) {
+      config.model = arg.split("=")[1]
+      continue
+    }
     if (!arg.startsWith("--")) {
       goalParts.push(arg)
     }
@@ -221,7 +235,7 @@ async function main() {
   if (!config.jsonOutput) {
     log.header(goal)
     log.config({
-      mo: config.moUrl,
+      api: config.apiUrl || config.moUrl,
       model: config.model,
       headless: config.headless,
       video: config.recordVideo,
@@ -232,8 +246,8 @@ async function main() {
     setSilent(true)
   }
 
-  // ensure mo is running
-  if (!await ensureMo(config.moUrl)) {
+  // skip mo setup if using custom api
+  if (!config.apiUrl && !await ensureMo(config.moUrl)) {
     process.exit(1)
   }
 

@@ -21,7 +21,13 @@ export class Agent {
   constructor(config: AgentConfig) {
     this.config = config
     this.browser = new BrowserController(config)
-    this.mo = new MoClient(config.moUrl, config.model, config.thinking)
+    this.mo = new MoClient({
+      moUrl: config.moUrl,
+      apiUrl: config.apiUrl,
+      apiKey: config.apiKey,
+      model: config.model,
+      thinking: config.thinking,
+    })
   }
 
   async run(goal: string): Promise<{ history: AgentStep[]; video: string | null }> {

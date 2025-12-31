@@ -30,6 +30,8 @@ export interface AgentStep {
 
 export interface AgentConfig {
   moUrl: string
+  apiUrl?: string
+  apiKey?: string
   model: string
   thinking: boolean
   headless: boolean
