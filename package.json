@@ -1,6 +1,6 @@
 {
   "name": "traw",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "module": "src/index.ts",
   "type": "module",
   "bin": {
@@ -10,7 +10,6 @@
   "scripts": {
     "traw": "bun run src/cli/index.ts",
     "mcp": "bun run src/mcp/server.ts",
-    "build": "bun run scripts/build.ts",
     "postinstall": "bunx playwright install firefox"
   },
   "dependencies": {

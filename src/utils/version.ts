@@ -1,5 +1,6 @@
-// version is baked at build time via BUILD_VERSION env
-export const VERSION = process.env.BUILD_VERSION || "dev"
+import pkg from "../../package.json"
+
+export const VERSION = pkg.version
 
 const GITHUB_REPO = "zarazaex69/traw"
 const RELEASES_API = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`
@@ -7,7 +8,6 @@ const RELEASES_API = `https://api.github.com/repos/${GITHUB_REPO}/releases/lates
 interface GithubRelease {
   tag_name: string
   html_url: string
-  published_at: string
 }
 
 export async function checkForUpdates(): Promise<{
@@ -27,11 +27,8 @@ export async function checkForUpdates(): Promise<{
     const latest = release.tag_name.replace(/^v/, "")
     const current = VERSION.replace(/^v/, "")
 
-    // simple version compare (works for semver)
-    const hasUpdate = latest !== current && current !== "dev"
-
     return {
-      hasUpdate,
+      hasUpdate: latest !== current,
       current: VERSION,
       latest: release.tag_name,
       url: release.html_url,
