@@ -1,0 +1,6 @@
+[submodule "markdownly.js"]
+	path = markdownly.js
+	url = https://github.com/zarazaex69/markdownly.js.git
+[submodule "mo"]
+	path = mo
+	url = https://github.com/zarazaex69/mo.git
