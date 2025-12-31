@@ -14,6 +14,7 @@ const defaultConfig: AgentConfig = {
   maxSteps: parseInt(process.env.TRAW_MAX_STEPS || "20"),
   useVision: process.env.TRAW_VISION === "true",
   debug: process.env.TRAW_DEBUG === "true",
+  jsonOutput: process.env.TRAW_JSON === "true",
 }
 
 const server = new McpServer({
