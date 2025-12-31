@@ -34,7 +34,6 @@ bun install
 # auth the traw 
 bun run traw auth
  # mo server not found. install mo? [Y/n] Y 
-bun run traw auth
 ```
 <div align="center">
   <img src="assets/auth.gif" alt="auth" style="border-radius: 3px;"/>
