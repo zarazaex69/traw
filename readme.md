@@ -11,16 +11,19 @@
 <details>
 <summary>🚨 Warning </summary>
 This project uses reverse engineering api z.ai, do not use it for anything because of serious/personal data, it is just a toy - not a tool 
+<br/>
+Plz Give Star
 </details>
 
 </div>
 
 
 ## About
-Plz Give Star
-
-
 Traw is a simple and fast neuro agent that browses the internet instead of you
+
+<div align="center">
+  <img src="assets/expirience.png" alt="auth" style="border-radius: 9px;"/>
+</div>
 
 ## Fast Start
 
@@ -36,7 +39,7 @@ bun run traw auth
  # mo server not found. install mo? [Y/n] Y 
 ```
 <div align="center">
-  <img src="assets/auth.gif" alt="auth" style="border-radius: 3px;"/>
+  <img src="assets/auth.gif" alt="auth" style="border-radius: 9px;"/>
 </div>
 
 ```bash
