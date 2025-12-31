@@ -10,7 +10,7 @@
 
 <details>
 <summary>🚨 Warning </summary>
-🚨 This project uses reverse engineering api z.ai, do not use it for anything because of serious/personal data, it is just a toy - not a tool 
+This project uses reverse engineering api z.ai, do not use it for anything because of serious/personal data, it is just a toy - not a tool 
 </details>
 
 </div>
@@ -26,6 +26,8 @@ Traw is a simple and fast neuro agent that browses the internet instead of you
 
 
 ```bash
+  
+
  # start the traw
 bun run traw run "your goal"
 ```

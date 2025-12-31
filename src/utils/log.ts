@@ -158,6 +158,16 @@ export const log = {
     console.error(`${c.red}${icons.cross} ${msg}${c.reset}`)
   },
 
+  info: (msg: string) => {
+    if (silent) return
+    console.log(`${c.cyan}${icons.arrow}${c.reset} ${msg}`)
+  },
+
+  success: (msg: string) => {
+    if (silent) return
+    console.log(`${c.green}${icons.check}${c.reset} ${msg}`)
+  },
+
   planning: () => {
     if (silent) return
     process.stdout.write(`${c.dim}planning...${c.reset}`)

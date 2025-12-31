@@ -2,10 +2,13 @@
 import { Agent } from "../agent/agent"
 import type { AgentConfig } from "../types"
 import { log, setSilent } from "../utils/log"
+import { pingMo, isMoInstalled, downloadMo, startMo, stopMo } from "../utils/mo-manager"
 import { printHelp } from "./help"
 
+const DEFAULT_MO_PORT = 8804
+
 const defaultConfig: AgentConfig = {
-  moUrl: "http://localhost:8804",
+  moUrl: `http://localhost:${DEFAULT_MO_PORT}`,
   model: "glm-4.7",
   thinking: true,
   headless: true,
@@ -14,6 +17,77 @@ const defaultConfig: AgentConfig = {
   useVision: false,
   debug: false,
   jsonOutput: false,
+}
+
+async function prompt(question: string): Promise<string> {
+  process.stdout.write(question)
+  for await (const line of console) {
+    return line.trim()
+  }
+  return ""
+}
+
+async function ensureMo(moUrl: string): Promise<boolean> {
+  // check if mo is already running
+  if (await pingMo(moUrl)) {
+    return true
+  }
+
+  // mo not running, check if installed
+  const installed = await isMoInstalled()
+
+  if (!installed) {
+    const answer = await prompt("mo server not found. install mo? [Y/n] ")
+    if (answer.toLowerCase() === "n") {
+      log.error("mo is required to run traw")
+      return false
+    }
+
+    try {
+      await downloadMo()
+    } catch (err: any) {
+      log.error(`failed to install mo: ${err.message}`)
+      return false
+    }
+  }
+
+  // start mo
+  try {
+    const port = parseInt(new URL(moUrl).port) || DEFAULT_MO_PORT
+    await startMo(port)
+    return true
+  } catch (err: any) {
+    log.error(`failed to start mo: ${err.message}`)
+    return false
+  }
+}
+
+async function registerAccount(moUrl: string): Promise<void> {
+  log.info("registering new account...")
+  log.info("browser will open for captcha solving")
+
+  const resp = await fetch(`${moUrl}/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  })
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({ error: resp.statusText }))
+    throw new Error(err.error || `registration failed: ${resp.status}`)
+  }
+
+  const data = await resp.json() as {
+    success: boolean
+    token: { id: string; email: string; active: boolean }
+  }
+
+  if (!data.success) {
+    throw new Error("registration failed")
+  }
+
+  log.success(`registered: ${data.token.email}`)
+  log.info(`token id: ${data.token.id}`)
+  log.info("token is now active and ready to use")
 }
 
 async function main() {
@@ -25,6 +99,31 @@ async function main() {
   }
 
   const cmd = args[0]
+
+  // handle auth command
+  if (cmd === "auth") {
+    let moUrl = defaultConfig.moUrl
+    for (let i = 1; i < args.length; i++) {
+      if (args[i].startsWith("--mo=")) {
+        moUrl = args[i].split("=")[1]
+      }
+    }
+
+    if (!await ensureMo(moUrl)) {
+      process.exit(1)
+    }
+
+    try {
+      await registerAccount(moUrl)
+    } catch (err: any) {
+      log.error(err.message)
+      process.exit(1)
+    } finally {
+      stopMo()
+    }
+    return
+  }
+
   if (cmd !== "run") {
     console.error(`unknown command: ${cmd}`)
     process.exit(1)
@@ -98,6 +197,11 @@ async function main() {
     setSilent(true)
   }
 
+  // ensure mo is running
+  if (!await ensureMo(config.moUrl)) {
+    process.exit(1)
+  }
+
   const agent = new Agent(config)
 
   try {
@@ -126,6 +230,8 @@ async function main() {
     }
     log.error(err.message)
     process.exit(1)
+  } finally {
+    stopMo()
   }
 }
 
