@@ -4,6 +4,8 @@ import type { AgentConfig } from "../types"
 import { log, setSilent } from "../utils/log"
 import { pingMo, isMoInstalled, downloadMo, startMo, stopMo } from "../utils/mo-manager"
 import { printHelp } from "./help"
+import { VERSION, checkForUpdates } from "../utils/version"
+import { checkFirstRun, markFirstRunDone, showStarBanner } from "../utils/first-run"
 
 const DEFAULT_MO_PORT = 8804
 
@@ -93,12 +95,45 @@ async function registerAccount(moUrl: string): Promise<void> {
 async function main() {
   const args = process.argv.slice(2)
 
+  // show star banner on first run (non-blocking)
+  if (await checkFirstRun()) {
+    showStarBanner()
+    await markFirstRunDone()
+  }
+
   if (args.length === 0 || args[0] === "--help" || args[0] === "-h") {
     printHelp()
     return
   }
 
   const cmd = args[0]
+
+  // handle version command
+  if (cmd === "--version" || cmd === "-v") {
+    console.log(`traw ${VERSION}`)
+    return
+  }
+
+  // handle update check command
+  if (cmd === "upd" || cmd === "update") {
+    log.info(`current version: ${VERSION}`)
+    log.info("checking for updates...")
+
+    const update = await checkForUpdates()
+    if (!update) {
+      log.error("failed to check for updates")
+      process.exit(1)
+    }
+
+    if (update.hasUpdate) {
+      console.log()
+      log.success(`new version available: ${update.latest}`)
+      log.info(`download: ${update.url}`)
+    } else {
+      log.success("you're on the latest version!")
+    }
+    return
+  }
 
   // handle auth command
   if (cmd === "auth") {

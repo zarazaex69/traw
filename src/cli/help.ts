@@ -1,14 +1,18 @@
+import { VERSION } from "../utils/version"
+
 export function printHelp() {
   console.log(`
-traw - AI browser agent
+traw v${VERSION} - AI browser agent
 
 Usage:
   traw run "your goal here"
   traw auth
+  traw upd
 
 Commands:
   run           execute browser agent with a goal
   auth          register new account and set as default
+  upd           check for updates
 
 Options:
   --fast        use fast model (glm-4-flash, no thinking)
@@ -18,6 +22,7 @@ Options:
   --vision      send screenshots to AI (visual mode)
   --steps=N     max steps (default: 20)
   --mo=URL      mo server url (default: http://localhost:8804)
+  -v, --version show version
 
 Examples:
   traw auth
