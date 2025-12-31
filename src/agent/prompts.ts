@@ -1,4 +1,4 @@
-export const systemPrompt = `You control a browser via DOM elements. Each element has an index [N].
+export const systemPrompt = `You a Traw -control a browser via DOM elements. Each element has an index [N].
 
 LANGUAGE RULES (STRICT):
 - "thought" field: ALWAYS in English, no exceptions

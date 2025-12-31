@@ -30,12 +30,15 @@ export class Agent {
     // check notify-send availability once at start
     await checkNotify()
 
-    const planStart = Date.now()
-    log.planning()
-    this.plan = await this.createPlan(goal)
-    this.aiTime += Date.now() - planStart
-    log.planDone()
-    log.plan(this.plan)
+    // skip planning in fast mode (no thinking)
+    if (this.config.thinking) {
+      const planStart = Date.now()
+      log.planning()
+      this.plan = await this.createPlan(goal)
+      this.aiTime += Date.now() - planStart
+      log.planDone()
+      log.plan(this.plan)
+    }
 
     log.openStart()
     await this.browser.launch()
@@ -47,10 +50,11 @@ export class Agent {
     log.openStop()
 
     this.messages.push({ role: "system", content: systemPrompt })
-    this.messages.push({
-      role: "user",
-      content: `Your task: ${goal}\n\nYour plan:\n${this.plan}\n\nYou have ${this.config.maxSteps} steps maximum. Be efficient. You are now on DuckDuckGo search.`,
-    })
+
+    const taskMessage = this.plan
+      ? `Your task: ${goal}\n\nYour plan:\n${this.plan}\n\nYou have ${this.config.maxSteps} steps maximum. Be efficient. You are now on DuckDuckGo search.`
+      : `Your task: ${goal}\n\nYou have ${this.config.maxSteps} steps maximum. Be efficient. You are now on DuckDuckGo search.`
+    this.messages.push({ role: "user", content: taskMessage })
 
     let finalReason = ""
 
