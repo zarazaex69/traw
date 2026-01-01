@@ -65,89 +65,81 @@ export class BrowserController {
     const url = this.page.url()
     const title = await this.page.title()
 
-    const pageText = await this.page.evaluate(() => {
-      const texts: string[] = []
-      const textSelector = "h1, h2, h3, h4, h5, h6, p, li, blockquote, td, th, figcaption, summary"
-      
-      document.querySelectorAll(textSelector).forEach((el) => {
-        const node = el as HTMLElement
-        if (node.offsetParent === null) return
-        
-        const text = node.innerText?.trim()
-        if (!text || text.length < 3) return
-        
-        const tag = el.tagName.toLowerCase()
-        const prefix = tag.startsWith("h") ? `[${tag}]` : ""
-        texts.push(`${prefix} ${text}`)
-      })
-      
-      const unique = [...new Set(texts)]
-      return unique.join("\n")
-    }).catch(() => "")
+    const xml = await this.page.evaluate(() => {
+      const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+      const out: string[] = ["<page>"]
+      let idx = 0
 
-    const elements = await this.page.evaluate(() => {
-      const items: string[] = []
-      const selector = 'a[href], button, input, textarea, select, [role="button"], [onclick]'
-      
-      document.querySelectorAll(selector).forEach((el) => {
-        const node = el as HTMLElement
-        if (node.offsetParent === null) return
-        
+      document.querySelectorAll("[data-idx]").forEach(el => el.removeAttribute("data-idx"))
+
+      const walk = (node: Element, depth: number) => {
+        const el = node as HTMLElement
+        if (el.offsetParent === null && el.tagName !== "BODY" && el.tagName !== "HTML") return
+
         const tag = el.tagName.toLowerCase()
-        const type = (el as HTMLInputElement).type || ""
-        const text = el.textContent?.trim() || ""
-        const val = (el as HTMLInputElement).value || ""
-        const name = (el as HTMLInputElement).name || ""
-        const placeholder = (el as HTMLInputElement).placeholder || ""
-        
-        const ariaLabel = el.getAttribute("aria-label") || ""
-        const titleAttr = el.getAttribute("title") || ""
-        const alt = (el as HTMLImageElement).alt || ""
-        
-        let linkedLabel = ""
-        const id = el.id
-        if (id) {
-          const labelEl = document.querySelector(`label[for="${id}"]`)
-          if (labelEl) linkedLabel = labelEl.textContent?.trim() || ""
-        }
-        
-        const displayText = ariaLabel || titleAttr || alt || linkedLabel || text || placeholder || name
-        
-        let label = ""
-        if (tag === "a") {
-          label = `<a>${displayText}</a>`
-        } else if (tag === "button") {
-          label = `<button>${displayText || val}</button>`
-        } else if (tag === "input" && (type === "submit" || type === "button")) {
-          label = `<button>${val || displayText}</button>`
-        } else if (tag === "input") {
-          const labelPart = linkedLabel ? ` label="${linkedLabel}"` : ""
-          label = `<input${type ? ` type="${type}"` : ""}${labelPart}${val ? ` value="${val}"` : ""}>`
-        } else if (tag === "textarea") {
-          const labelPart = linkedLabel ? ` label="${linkedLabel}"` : ""
-          label = `<textarea${labelPart}>${val}</textarea>`
-        } else if (tag === "select") {
-          const labelPart = linkedLabel ? ` label="${linkedLabel}"` : ""
-          const selected = (el as HTMLSelectElement).selectedOptions[0]?.text || ""
-          label = `<select${labelPart}${selected ? ` selected="${selected}"` : ""}>`
+        const indent = "  ".repeat(depth)
+
+        const skipTags = ["script", "style", "noscript", "svg", "path", "meta", "link", "br", "hr"]
+        if (skipTags.includes(tag)) return
+
+        const interactiveTags = ["a", "button", "input", "textarea", "select"]
+        const hasRole = el.getAttribute("role")
+        const hasOnclick = el.hasAttribute("onclick")
+        const isInteractive = interactiveTags.includes(tag) || hasRole || hasOnclick
+
+        if (isInteractive) {
+          el.setAttribute("data-idx", String(idx))
+
+          const attrs: string[] = [`id="${idx}"`]
+          
+          const type = (el as HTMLInputElement).type
+          if (type) attrs.push(`type="${type}"`)
+          
+          const href = (el as HTMLAnchorElement).href
+          if (href && tag === "a") attrs.push(`href="${esc(href.slice(0, 80))}"`)
+          
+          const val = (el as HTMLInputElement).value
+          if (val) attrs.push(`value="${esc(val.slice(0, 40))}"`)
+          
+          if ((el as any).disabled) attrs.push(`disabled="true"`)
+          if ((el as any).checked) attrs.push(`checked="true"`)
+          if ((el as any).readOnly) attrs.push(`readonly="true"`)
+          if ((el as any).required) attrs.push(`required="true"`)
+          if (el.getAttribute("aria-expanded")) attrs.push(`expanded="${el.getAttribute("aria-expanded")}"`)
+          if (el.getAttribute("aria-selected") === "true") attrs.push(`selected="true"`)
+
+          const text = el.textContent?.trim().slice(0, 60) || ""
+          const ariaLabel = el.getAttribute("aria-label")
+          const placeholder = (el as HTMLInputElement).placeholder
+          const label = esc(ariaLabel || text || placeholder || "")
+
+          out.push(`${indent}<${tag} ${attrs.join(" ")}>${label}</${tag}>`)
+          idx++
         } else {
-          label = `<${tag}>${displayText}</${tag}>`
-        }
-        
-        node.setAttribute("data-idx", String(items.length))
-        items.push(`[${items.length}] ${label}`)
-      })
-      
-      return items.join("\n")
-    }).catch(() => "")
-    
-    const combined = [pageText, elements].filter(Boolean).join("\n\n")
+          const textTags = ["h1", "h2", "h3", "h4", "h5", "h6", "p", "li", "td", "th", "label"]
+          if (textTags.includes(tag)) {
+            const directText = Array.from(el.childNodes)
+              .filter(n => n.nodeType === 3)
+              .map(n => n.textContent?.trim())
+              .join(" ")
+              .trim()
+              .slice(0, 120)
 
-    return {
-      url,
-      title,
-      text: combined,
-    }
+            if (directText.length > 2) {
+              out.push(`${indent}<${tag}>${esc(directText)}</${tag}>`)
+            }
+          }
+        }
+
+        Array.from(el.children).forEach(child => walk(child, depth + 1))
+      }
+
+      walk(document.body, 0)
+      out.push("</page>")
+      return out.join("\n")
+    }).catch(() => "<page></page>")
+
+    return { url, title, text: xml }
   }
 
   async execute(action: Action): Promise<string> {
