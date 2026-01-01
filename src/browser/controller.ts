@@ -162,6 +162,10 @@ export class BrowserController {
           await this.page.waitForTimeout(2000)
           return "waited 2s"
 
+        case "back":
+          await this.page.goBack({ waitUntil: "domcontentloaded", timeout: 10000 })
+          return "went back"
+
         case "done":
           return "done"
 

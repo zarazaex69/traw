@@ -24,6 +24,7 @@ ACTIONS (use index to target elements):
 - scroll: {"type":"scroll","direction":"down"} - scroll page
 - goto: {"type":"goto","text":"url"} - navigate to URL
 - wait: {"type":"wait"} - wait 2 seconds
+- back: {"type":"back"} - go back to previous page (FREE action, gives +1 step back, use when current page is wrong/useless)
 - done: {"type":"done","reason":"result"} - task complete, include answer IN USER'S LANGUAGE with markdown
 
 OUTPUT (JSON only, no markdown wrapper):

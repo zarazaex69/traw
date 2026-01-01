@@ -108,6 +108,10 @@ export class Agent {
           break
         }
 
+        if (decision.action.type === "back") {
+          step = Math.max(-1, step - 2)
+        }
+
         await new Promise((r) => setTimeout(r, 300))
       }
     } finally {

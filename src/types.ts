@@ -4,6 +4,7 @@ export type ActionType =
   | "scroll"
   | "goto"
   | "wait"
+  | "back"
   | "done"
 
 export interface Action {
