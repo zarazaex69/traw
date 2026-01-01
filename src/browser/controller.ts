@@ -74,8 +74,6 @@ export class BrowserController {
 
       const walk = (node: Element, depth: number) => {
         const el = node as HTMLElement
-        if (el.offsetParent === null && el.tagName !== "BODY" && el.tagName !== "HTML") return
-
         const tag = el.tagName.toLowerCase()
         const indent = "  ".repeat(depth)
 
@@ -99,7 +97,7 @@ export class BrowserController {
           if (href && tag === "a") attrs.push(`href="${esc(href.slice(0, 80))}"`)
           
           const val = (el as HTMLInputElement).value
-          if (val) attrs.push(`value="${esc(val.slice(0, 40))}"`)
+          if (val) attrs.push(`value="${esc(val)}"`)
           
           if ((el as any).disabled) attrs.push(`disabled="true"`)
           if ((el as any).checked) attrs.push(`checked="true"`)
@@ -108,7 +106,7 @@ export class BrowserController {
           if (el.getAttribute("aria-expanded")) attrs.push(`expanded="${el.getAttribute("aria-expanded")}"`)
           if (el.getAttribute("aria-selected") === "true") attrs.push(`selected="true"`)
 
-          const text = el.textContent?.trim().slice(0, 60) || ""
+          const text = el.textContent?.trim() || ""
           const ariaLabel = el.getAttribute("aria-label")
           const placeholder = (el as HTMLInputElement).placeholder
           const label = esc(ariaLabel || text || placeholder || "")
@@ -123,7 +121,6 @@ export class BrowserController {
               .map(n => n.textContent?.trim())
               .join(" ")
               .trim()
-              .slice(0, 120)
 
             if (directText.length > 2) {
               out.push(`${indent}<${tag}>${esc(directText)}</${tag}>`)
