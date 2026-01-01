@@ -72,9 +72,13 @@ export class Agent {
         log.step(step + 1, this.config.maxSteps, state.url)
 
         const thinkStart = Date.now()
+        let decision: { thought: string; action: Action }
         log.receiveStart()
-        const decision = await this.think(state)
-        log.receiveStop()
+        try {
+          decision = await this.think(state)
+        } finally {
+          log.receiveStop()
+        }
         this.aiTime += Date.now() - thinkStart
 
         log.thought(decision.thought)

@@ -22,7 +22,7 @@ export class MoClient {
     this.thinking = opts.thinking
   }
 
-  async chat(messages: ChatMessage[]): Promise<string> {
+  async chat(messages: ChatMessage[], timeoutMs = 300000): Promise<string> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     }
@@ -31,16 +31,30 @@ export class MoClient {
       headers["Authorization"] = `Bearer ${this.apiKey}`
     }
 
-    const resp = await fetch(`${this.url}/v1/chat/completions`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        model: this.model,
-        messages,
-        stream: false,
-        thinking: this.thinking,
-      }),
-    })
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+    let resp: Response
+    try {
+      resp = await fetch(`${this.url}/v1/chat/completions`, {
+        method: "POST",
+        headers,
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: this.model,
+          messages,
+          stream: false,
+          thinking: this.thinking,
+        }),
+      })
+    } catch (err: any) {
+      clearTimeout(timeoutId)
+      if (err.name === "AbortError") {
+        throw new Error(`mo timeout: no response in ${timeoutMs / 1000}s`)
+      }
+      throw err
+    }
+    clearTimeout(timeoutId)
 
     if (!resp.ok) {
       const body = await resp.text()
