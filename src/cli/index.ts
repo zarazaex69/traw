@@ -18,7 +18,6 @@ const defaultConfig: AgentConfig = {
   headless: true,
   recordVideo: false,
   maxSteps: 20,
-  useVision: false,
   debug: false,
   jsonOutput: false,
 }
@@ -184,10 +183,6 @@ async function main() {
       config.recordVideo = true
       continue
     }
-    if (arg === "--vision") {
-      config.useVision = true
-      continue
-    }
     if (arg === "--fast") {
       config.model = "0727-106B-API"
       config.thinking = false
@@ -239,7 +234,6 @@ async function main() {
       model: config.model,
       headless: config.headless,
       video: config.recordVideo,
-      vision: config.useVision,
       steps: config.maxSteps,
     })
   } else {

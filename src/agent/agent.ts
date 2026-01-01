@@ -1,4 +1,4 @@
-import type { Action, AgentConfig, AgentStep, ChatMessage, MessageContent, PageState } from "../types"
+import type { Action, AgentConfig, AgentStep, ChatMessage, PageState } from "../types"
 import { BrowserController } from "../browser/controller"
 import { MoClient } from "../api/mo-client"
 import { log } from "../utils/log"
@@ -13,7 +13,6 @@ export class Agent {
   private messages: ChatMessage[] = []
   private plan = ""
 
-  // time tracking
   private aiTime = 0
   private browserTime = 0
   private startTime = 0
@@ -33,10 +32,8 @@ export class Agent {
   async run(goal: string): Promise<{ history: AgentStep[]; video: string | null }> {
     this.startTime = Date.now()
 
-    // check notify-send availability once at start
     await checkNotify()
 
-    // skip planning in fast mode (no thinking)
     if (this.config.thinking) {
       const planStart = Date.now()
       log.planning()
@@ -68,7 +65,7 @@ export class Agent {
       for (let step = 0; step < this.config.maxSteps; step++) {
         const loadStart = Date.now()
         log.loadStart()
-        const state = await this.browser.getState(this.config.useVision)
+        const state = await this.browser.getState()
         log.loadStop()
         this.browserTime += Date.now() - loadStart
 
@@ -120,7 +117,6 @@ export class Agent {
       log.done(this.history.length, finalReason)
       log.stats(totalTime, this.aiTime, this.browserTime)
 
-      // send desktop notification
       await notify("Agent done", `${this.history.length} steps completed`)
 
       return { history: this.history, video: videoPath }
@@ -134,9 +130,22 @@ export class Agent {
     ])
   }
 
+  private formatRecentHistory(): string {
+    if (this.history.length === 0) return ""
+    
+    const lines = this.history.map((h, i) => {
+      return `${i + 1}. ${h.action.type}${h.action.index !== undefined ? ` [${h.action.index}]` : ""}${h.action.text ? ` "${h.action.text}"` : ""} → ${h.result}`
+    })
+    
+    return `\nPrevious actions:\n${lines.join("\n")}`
+  }
+
   private async think(state: PageState): Promise<{ thought: string; action: Action }> {
+    const historyBlock = this.formatRecentHistory()
+    
     const stateText = `URL: ${state.url}
 Title: ${state.title}
+${historyBlock}
 
 Elements:
 ${state.text}
@@ -147,15 +156,7 @@ What's your next action?`
       console.log("\n" + state.text)
     }
 
-    if (state.screenshot) {
-      const content: MessageContent[] = [
-        { type: "image_url", image_url: { url: state.screenshot } },
-        { type: "text", text: stateText },
-      ]
-      this.messages.push({ role: "user", content })
-    } else {
-      this.messages.push({ role: "user", content: stateText })
-    }
+    this.messages.push({ role: "user", content: stateText })
 
     for (let attempt = 0; attempt < 3; attempt++) {
       const response = await this.mo.chat(this.messages)
@@ -183,7 +184,6 @@ What's your next action?`
     try {
       let jsonStr = response
 
-      // try extract from markdown block
       const match = response.match(/```(?:json)?\s*([\s\S]*?)```/)
       if (match) {
         jsonStr = match[1]
@@ -197,7 +197,6 @@ What's your next action?`
         action: parsed.action,
       }
     } catch (err) {
-      // debug parse errors - append to log (fire and forget)
       const logEntry = `\n--- ${new Date().toISOString()} ---\nError: ${err}\nResponse:\n${response}\n`
       import("fs").then(fs => {
         fs.appendFileSync("agent-errors.log", logEntry)

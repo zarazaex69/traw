@@ -19,7 +19,6 @@ export interface PageState {
   url: string
   title: string
   text: string
-  screenshot?: string
 }
 
 export interface AgentStep {
@@ -38,18 +37,11 @@ export interface AgentConfig {
   headless: boolean
   recordVideo: boolean
   maxSteps: number
-  useVision: boolean
   debug: boolean
   jsonOutput: boolean
 }
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant"
-  content: string | MessageContent[]
-}
-
-export interface MessageContent {
-  type: "text" | "image_url"
-  text?: string
-  image_url?: { url: string }
+  content: string
 }

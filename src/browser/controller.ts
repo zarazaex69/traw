@@ -57,7 +57,7 @@ export class BrowserController {
     return videoPath
   }
 
-  async getState(includeScreenshot = false): Promise<PageState> {
+  async getState(): Promise<PageState> {
     if (!this.page) throw new Error("browser not launched")
 
     await this.page.waitForLoadState("domcontentloaded").catch(() => {})
@@ -71,19 +71,18 @@ export class BrowserController {
       
       document.querySelectorAll(textSelector).forEach((el) => {
         const node = el as HTMLElement
-        if (node.offsetParent === null) return // skip hidden
+        if (node.offsetParent === null) return
         
         const text = node.innerText?.trim()
         if (!text || text.length < 3) return
         
         const tag = el.tagName.toLowerCase()
         const prefix = tag.startsWith("h") ? `[${tag}]` : ""
-        texts.push(`${prefix} ${text.slice(0, 200)}`)
+        texts.push(`${prefix} ${text}`)
       })
       
-      // dedupe and limit
       const unique = [...new Set(texts)]
-      return unique.slice(0, 30).join("\n")
+      return unique.join("\n")
     }).catch(() => "")
 
     const elements = await this.page.evaluate(() => {
@@ -92,22 +91,48 @@ export class BrowserController {
       
       document.querySelectorAll(selector).forEach((el) => {
         const node = el as HTMLElement
-        if (node.offsetParent === null) return // skip hidden
+        if (node.offsetParent === null) return
         
         const tag = el.tagName.toLowerCase()
         const type = (el as HTMLInputElement).type || ""
-        const text = el.textContent?.trim().slice(0, 40) || ""
+        const text = el.textContent?.trim() || ""
         const val = (el as HTMLInputElement).value || ""
-        const name = (el as HTMLInputElement).name || (el as HTMLInputElement).placeholder || ""
+        const name = (el as HTMLInputElement).name || ""
+        const placeholder = (el as HTMLInputElement).placeholder || ""
+        
+        const ariaLabel = el.getAttribute("aria-label") || ""
+        const titleAttr = el.getAttribute("title") || ""
+        const alt = (el as HTMLImageElement).alt || ""
+        
+        let linkedLabel = ""
+        const id = el.id
+        if (id) {
+          const labelEl = document.querySelector(`label[for="${id}"]`)
+          if (labelEl) linkedLabel = labelEl.textContent?.trim() || ""
+        }
+        
+        const displayText = ariaLabel || titleAttr || alt || linkedLabel || text || placeholder || name
         
         let label = ""
-        if (tag === "a") label = `<a>${text}</a>`
-        else if (tag === "button") label = `<button>${text || val}</button>`
-        else if (tag === "input" && (type === "submit" || type === "button")) label = `<button>${val || text}</button>`
-        else if (tag === "input") label = `<input${type ? ` type="${type}"` : ""}${name ? ` name="${name}"` : ""}${val ? ` value="${val}"` : ""}>`
-        else if (tag === "textarea") label = `<textarea${name ? ` name="${name}"` : ""}>${val.slice(0, 20)}</textarea>`
-        else if (tag === "select") label = `<select${name ? ` name="${name}"` : ""}>`
-        else label = `<${tag}>${text.slice(0, 20)}</${tag}>`
+        if (tag === "a") {
+          label = `<a>${displayText}</a>`
+        } else if (tag === "button") {
+          label = `<button>${displayText || val}</button>`
+        } else if (tag === "input" && (type === "submit" || type === "button")) {
+          label = `<button>${val || displayText}</button>`
+        } else if (tag === "input") {
+          const labelPart = linkedLabel ? ` label="${linkedLabel}"` : ""
+          label = `<input${type ? ` type="${type}"` : ""}${labelPart}${val ? ` value="${val}"` : ""}>`
+        } else if (tag === "textarea") {
+          const labelPart = linkedLabel ? ` label="${linkedLabel}"` : ""
+          label = `<textarea${labelPart}>${val}</textarea>`
+        } else if (tag === "select") {
+          const labelPart = linkedLabel ? ` label="${linkedLabel}"` : ""
+          const selected = (el as HTMLSelectElement).selectedOptions[0]?.text || ""
+          label = `<select${labelPart}${selected ? ` selected="${selected}"` : ""}>`
+        } else {
+          label = `<${tag}>${displayText}</${tag}>`
+        }
         
         node.setAttribute("data-idx", String(items.length))
         items.push(`[${items.length}] ${label}`)
@@ -116,20 +141,12 @@ export class BrowserController {
       return items.join("\n")
     }).catch(() => "")
     
-    // combine text + interactive elements
     const combined = [pageText, elements].filter(Boolean).join("\n\n")
-
-    let screenshot: string | undefined
-    if (includeScreenshot) {
-      const buf = await this.page.screenshot({ type: "jpeg", quality: 80 })
-      screenshot = `data:image/jpeg;base64,${buf.toString("base64")}`
-    }
 
     return {
       url,
       title,
       text: combined,
-      screenshot,
     }
   }
 
