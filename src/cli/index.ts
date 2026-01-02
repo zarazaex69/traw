@@ -26,11 +26,18 @@ const cliOptions = {
   model: { type: "string" as const },
 }
 
+type Provider = "qwen" | "glm"
+
+const providerModels: Record<Provider, { default: string; fast: string }> = {
+  qwen: { default: "coder-model", fast: "vision-model" },
+  glm: { default: "GLM-4-Plus", fast: "GLM-4-Flash" },
+}
+
 const defaultConfig: AgentConfig = {
   moUrl: `http://localhost:${DEFAULT_MO_PORT}`,
   apiUrl: undefined,
   apiKey: process.env.OPENAI_API_KEY || process.env.API_KEY,
-  model: "glm-4.7",
+  model: "coder-model",
   thinking: true,
   headless: true,
   recordVideo: false,
@@ -48,12 +55,10 @@ async function prompt(question: string): Promise<string> {
 }
 
 async function ensureMo(moUrl: string): Promise<boolean> {
-  // check if mo is already running
   if (await pingMo(moUrl)) {
     return true
   }
 
-  // mo not running, check if installed
   const installed = await isMoInstalled()
 
   if (!installed) {
@@ -71,7 +76,6 @@ async function ensureMo(moUrl: string): Promise<boolean> {
     }
   }
 
-  // start mo
   try {
     const port = parseInt(new URL(moUrl).port) || DEFAULT_MO_PORT
     await startMo(port)
@@ -82,11 +86,13 @@ async function ensureMo(moUrl: string): Promise<boolean> {
   }
 }
 
-async function registerAccount(moUrl: string): Promise<void> {
-  log.info("registering new account...")
+async function registerAccount(moUrl: string, provider: Provider): Promise<void> {
+  log.info(`registering new ${provider} account...`)
   log.info("browser will open for captcha solving")
 
-  const resp = await fetch(`${moUrl}/auth/register`, {
+  const endpoint = provider === "qwen" ? "/auth/qwen/register" : "/auth/glm/register"
+
+  const resp = await fetch(`${moUrl}${endpoint}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
   })
@@ -98,7 +104,7 @@ async function registerAccount(moUrl: string): Promise<void> {
 
   const data = await resp.json() as {
     success: boolean
-    token: { id: string; email: string; active: boolean }
+    token: { id: string; email: string; is_active: boolean }
   }
 
   if (!data.success) {
@@ -107,7 +113,64 @@ async function registerAccount(moUrl: string): Promise<void> {
 
   log.success(`registered: ${data.token.email}`)
   log.info(`token id: ${data.token.id}`)
+  log.info(`provider: ${provider}`)
   log.info("token is now active and ready to use")
+}
+
+async function listTokens(moUrl: string, provider: Provider): Promise<void> {
+  const endpoint = `/auth/${provider}/tokens`
+
+  const resp = await fetch(`${moUrl}${endpoint}`)
+  if (!resp.ok) {
+    throw new Error(`failed to list tokens: ${resp.status}`)
+  }
+
+  const data = await resp.json() as {
+    tokens: Array<{
+      id: string
+      email: string
+      provider: string
+      is_active: boolean
+      created_at: string
+    }>
+  }
+
+  if (!data.tokens || data.tokens.length === 0) {
+    log.info(`no ${provider} tokens found`)
+    return
+  }
+
+  console.log()
+  log.info(`${provider} tokens:`)
+  for (const t of data.tokens) {
+    const active = t.is_active ? " [active]" : ""
+    console.log(`  ${t.id} - ${t.email}${active}`)
+  }
+  console.log()
+}
+
+async function activateToken(moUrl: string, tokenId: string): Promise<void> {
+  const providers: Provider[] = ["qwen", "glm"]
+
+  for (const provider of providers) {
+    const resp = await fetch(`${moUrl}/auth/${provider}/tokens/${tokenId}/activate`, {
+      method: "POST",
+    })
+
+    if (resp.ok) {
+      log.success(`token ${tokenId} activated`)
+      return
+    }
+  }
+
+  throw new Error(`token ${tokenId} not found`)
+}
+
+function detectProviderFromModel(model: string): Provider {
+  if (model.startsWith("coder-") || model.startsWith("vision-")) {
+    return "qwen"
+  }
+  return "glm"
 }
 
 async function main() {
@@ -157,13 +220,40 @@ async function main() {
 
   if (cmd === "auth") {
     const moUrl = typeof values.mo === "string" ? values.mo : defaultConfig.moUrl
+    const subCmd = positionals[1]
 
     if (!await ensureMo(moUrl)) {
       process.exit(1)
     }
 
     try {
-      await registerAccount(moUrl)
+      if (subCmd === "qwen") {
+        await registerAccount(moUrl, "qwen")
+      } else if (subCmd === "glm") {
+        await registerAccount(moUrl, "glm")
+      } else if (subCmd === "list") {
+        const provider = positionals[2] as Provider | undefined
+        if (provider && (provider === "qwen" || provider === "glm")) {
+          await listTokens(moUrl, provider)
+        } else {
+          await listTokens(moUrl, "qwen")
+          await listTokens(moUrl, "glm")
+        }
+      } else if (subCmd === "activate") {
+        const tokenId = positionals[2]
+        if (!tokenId) {
+          log.error("provide token id: traw auth activate <id>")
+          process.exit(1)
+        }
+        await activateToken(moUrl, tokenId)
+      } else {
+        log.error("usage: traw auth <qwen|glm|list|activate>")
+        log.info("  traw auth qwen     - register qwen account")
+        log.info("  traw auth glm      - register glm/z.ai account")
+        log.info("  traw auth list     - list all tokens")
+        log.info("  traw auth activate <id> - activate token")
+        process.exit(1)
+      }
     } catch (err: any) {
       log.error(err.message)
       process.exit(1)
@@ -181,7 +271,15 @@ async function main() {
   const moUrl = typeof values.mo === "string" ? values.mo : defaultConfig.moUrl
   const apiUrl = typeof values.api === "string" ? values.api : undefined
   const apiKey = typeof values["api-key"] === "string" ? values["api-key"] : defaultConfig.apiKey
-  const model = typeof values.model === "string" ? values.model : (values.fast ? "0727-106B-API" : defaultConfig.model)
+
+  let model: string
+  if (typeof values.model === "string") {
+    model = values.model
+  } else {
+    const provider: Provider = "qwen"
+    model = values.fast ? providerModels[provider].fast : providerModels[provider].default
+  }
+
   const steps = typeof values.steps === "string" ? parseInt(values.steps) : defaultConfig.maxSteps
 
   const config: AgentConfig = {
@@ -199,7 +297,7 @@ async function main() {
 
   const goal = positionals.slice(1).join(" ")
   if (!goal) {
-    log.error("provide a goal: bun run traw run \"your goal\"")
+    log.error("provide a goal: traw run \"your goal\"")
     process.exit(1)
   }
 
@@ -217,7 +315,6 @@ async function main() {
     setSilent(true)
   }
 
-  // skip mo setup if using custom api
   if (!config.apiUrl && !await ensureMo(config.moUrl)) {
     process.exit(1)
   }
