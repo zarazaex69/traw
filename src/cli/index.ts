@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import { parseArgs } from "util"
 import { Agent } from "../agent/agent"
 import type { AgentConfig } from "../types"
 import { log, setSilent } from "../utils/log"
@@ -8,6 +9,22 @@ import { VERSION, checkForUpdates } from "../utils/version"
 import { checkFirstRun, markFirstRunDone, showStarBanner } from "../utils/first-run"
 
 const DEFAULT_MO_PORT = 8804
+
+const cliOptions = {
+  help: { type: "boolean" as const, short: "h" as const },
+  version: { type: "boolean" as const, short: "v" as const },
+  headless: { type: "boolean" as const },
+  headed: { type: "boolean" as const },
+  video: { type: "boolean" as const },
+  fast: { type: "boolean" as const },
+  debug: { type: "boolean" as const },
+  json: { type: "boolean" as const },
+  steps: { type: "string" as const },
+  mo: { type: "string" as const },
+  api: { type: "string" as const },
+  "api-key": { type: "string" as const },
+  model: { type: "string" as const },
+}
 
 const defaultConfig: AgentConfig = {
   moUrl: `http://localhost:${DEFAULT_MO_PORT}`,
@@ -94,28 +111,30 @@ async function registerAccount(moUrl: string): Promise<void> {
 }
 
 async function main() {
-  const args = process.argv.slice(2)
+  const { values, positionals } = parseArgs({
+    args: Bun.argv.slice(2),
+    options: cliOptions,
+    allowPositionals: true,
+    strict: false,
+  })
 
-  // show star banner on first run (non-blocking)
   if (await checkFirstRun()) {
     showStarBanner()
     await markFirstRunDone()
   }
 
-  if (args.length === 0 || args[0] === "--help" || args[0] === "-h") {
+  if (positionals.length === 0 || values.help) {
     printHelp()
     return
   }
 
-  const cmd = args[0]
-
-  // handle version command
-  if (cmd === "--version" || cmd === "-v") {
+  if (values.version) {
     console.log(`traw ${VERSION}`)
     return
   }
 
-  // handle update check command
+  const cmd = positionals[0]
+
   if (cmd === "upd" || cmd === "update") {
     log.info(`current version: ${VERSION}`)
     log.info("checking for updates...")
@@ -136,14 +155,8 @@ async function main() {
     return
   }
 
-  // handle auth command
   if (cmd === "auth") {
-    let moUrl = defaultConfig.moUrl
-    for (let i = 1; i < args.length; i++) {
-      if (args[i].startsWith("--mo=")) {
-        moUrl = args[i].split("=")[1]
-      }
-    }
+    const moUrl = typeof values.mo === "string" ? values.mo : defaultConfig.moUrl
 
     if (!await ensureMo(moUrl)) {
       process.exit(1)
@@ -165,63 +178,26 @@ async function main() {
     process.exit(1)
   }
 
-  const config = { ...defaultConfig }
-  const goalParts: string[] = []
+  const moUrl = typeof values.mo === "string" ? values.mo : defaultConfig.moUrl
+  const apiUrl = typeof values.api === "string" ? values.api : undefined
+  const apiKey = typeof values["api-key"] === "string" ? values["api-key"] : defaultConfig.apiKey
+  const model = typeof values.model === "string" ? values.model : (values.fast ? "0727-106B-API" : defaultConfig.model)
+  const steps = typeof values.steps === "string" ? parseInt(values.steps) : defaultConfig.maxSteps
 
-  for (let i = 1; i < args.length; i++) {
-    const arg = args[i]
-
-    if (arg === "--headless") {
-      config.headless = true
-      continue
-    }
-    if (arg === "--no-headless" || arg === "--headed") {
-      config.headless = false
-      continue
-    }
-    if (arg === "--video") {
-      config.recordVideo = true
-      continue
-    }
-    if (arg === "--fast") {
-      config.model = "0727-106B-API"
-      config.thinking = false
-      continue
-    }
-    if (arg === "--debug") {
-      config.debug = true
-      continue
-    }
-    if (arg === "--json") {
-      config.jsonOutput = true
-      continue
-    }
-    if (arg.startsWith("--steps=")) {
-      config.maxSteps = parseInt(arg.split("=")[1])
-      continue
-    }
-    if (arg.startsWith("--mo=")) {
-      config.moUrl = arg.split("=")[1]
-      continue
-    }
-    if (arg.startsWith("--api=")) {
-      config.apiUrl = arg.split("=")[1]
-      continue
-    }
-    if (arg.startsWith("--api-key=")) {
-      config.apiKey = arg.split("=")[1]
-      continue
-    }
-    if (arg.startsWith("--model=")) {
-      config.model = arg.split("=")[1]
-      continue
-    }
-    if (!arg.startsWith("--")) {
-      goalParts.push(arg)
-    }
+  const config: AgentConfig = {
+    moUrl,
+    apiUrl,
+    apiKey,
+    model,
+    thinking: values.fast !== true,
+    headless: values.headed === true ? false : (values.headless === true || defaultConfig.headless),
+    recordVideo: values.video === true,
+    maxSteps: steps,
+    debug: values.debug === true,
+    jsonOutput: values.json === true,
   }
 
-  const goal = goalParts.join(" ")
+  const goal = positionals.slice(1).join(" ")
   if (!goal) {
     log.error("provide a goal: bun run traw run \"your goal\"")
     process.exit(1)
@@ -230,10 +206,11 @@ async function main() {
   if (!config.jsonOutput) {
     log.header(goal)
     log.config({
-      api: config.apiUrl || config.moUrl,
+      mo: config.apiUrl || config.moUrl,
       model: config.model,
       headless: config.headless,
       video: config.recordVideo,
+      vision: false,
       steps: config.maxSteps,
     })
   } else {
