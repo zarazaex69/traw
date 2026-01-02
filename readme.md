@@ -30,9 +30,9 @@ Traw is a simple and fast neuro agent that browses the internet instead of you
 
 ```bash
 # install the traw
-git clone https://github.com/zarazaex69/traw
-cd traw
-bun install
+bun add -g traw
+# or 
+npm i -g traw
 
 # auth the traw 
 bun run traw auth
