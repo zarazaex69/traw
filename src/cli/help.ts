@@ -23,6 +23,7 @@ Models:
 
 Options:
   --fast        use fast model (vision-model for qwen, GLM-4-Flash for glm)
+  --no-planning skip planning phase, go straight to execution
   --headless    run without visible browser (default)
   --headed      show browser window
   --video       enable video recording

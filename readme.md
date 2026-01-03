@@ -35,7 +35,7 @@ bun add -g traw
 npm i -g traw
 
 # auth the traw 
-bun run traw auth glm
+bun run traw auth glm # glm/qwen
  # mo server not found. install mo? [Y/n] Y 
 ```
 <div align="center">
