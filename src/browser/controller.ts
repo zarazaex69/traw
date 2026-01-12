@@ -72,59 +72,53 @@ export class BrowserController {
 
       document.querySelectorAll("[data-idx]").forEach(el => el.removeAttribute("data-idx"))
 
+      const skipTags = new Set(["script", "style", "noscript", "svg", "path", "meta", "link", "br", "hr"])
+      const interactiveTags = new Set(["a", "button", "input", "textarea", "select"])
+      const textTags = new Set(["h1", "h2", "h3", "h4", "h5", "h6", "p", "li", "td", "th", "label"])
+
+      const getAttrs = (el: HTMLElement, tag: string, idx: number): string[] => {
+        const attrs: string[] = [`id="${idx}"`]
+        const input = el as HTMLInputElement
+        const anchor = el as HTMLAnchorElement
+
+        if (input.type) attrs.push(`type="${input.type}"`)
+        if (tag === "a" && anchor.href) attrs.push(`href="${esc(anchor.href.slice(0, 80))}"`)
+        if (input.value) attrs.push(`value="${esc(input.value)}"`)
+        if ((el as any).disabled) attrs.push(`disabled="true"`)
+        if ((el as any).checked) attrs.push(`checked="true"`)
+        if ((el as any).readOnly) attrs.push(`readonly="true"`)
+        if ((el as any).required) attrs.push(`required="true"`)
+        if (el.getAttribute("aria-expanded")) attrs.push(`expanded="${el.getAttribute("aria-expanded")}"`)
+        if (el.getAttribute("aria-selected") === "true") attrs.push(`selected="true"`)
+
+        return attrs
+      }
+
       const walk = (node: Element, depth: number) => {
         const el = node as HTMLElement
         const tag = el.tagName.toLowerCase()
         const indent = "  ".repeat(depth)
 
-        const skipTags = ["script", "style", "noscript", "svg", "path", "meta", "link", "br", "hr"]
-        if (skipTags.includes(tag)) return
+        if (skipTags.has(tag)) return
 
-        const interactiveTags = ["a", "button", "input", "textarea", "select"]
-        const hasRole = el.getAttribute("role")
-        const hasOnclick = el.hasAttribute("onclick")
-        const isInteractive = interactiveTags.includes(tag) || hasRole || hasOnclick
+        const isInteractive = interactiveTags.has(tag) || el.getAttribute("role") || el.hasAttribute("onclick")
 
         if (isInteractive) {
           el.setAttribute("data-idx", String(idx))
-
-          const attrs: string[] = [`id="${idx}"`]
-          
-          const type = (el as HTMLInputElement).type
-          if (type) attrs.push(`type="${type}"`)
-          
-          const href = (el as HTMLAnchorElement).href
-          if (href && tag === "a") attrs.push(`href="${esc(href.slice(0, 80))}"`)
-          
-          const val = (el as HTMLInputElement).value
-          if (val) attrs.push(`value="${esc(val)}"`)
-          
-          if ((el as any).disabled) attrs.push(`disabled="true"`)
-          if ((el as any).checked) attrs.push(`checked="true"`)
-          if ((el as any).readOnly) attrs.push(`readonly="true"`)
-          if ((el as any).required) attrs.push(`required="true"`)
-          if (el.getAttribute("aria-expanded")) attrs.push(`expanded="${el.getAttribute("aria-expanded")}"`)
-          if (el.getAttribute("aria-selected") === "true") attrs.push(`selected="true"`)
-
+          const attrs = getAttrs(el, tag, idx)
           const text = el.textContent?.trim() || ""
-          const ariaLabel = el.getAttribute("aria-label")
-          const placeholder = (el as HTMLInputElement).placeholder
-          const label = esc(ariaLabel || text || placeholder || "")
-
+          const label = esc(el.getAttribute("aria-label") || text || (el as HTMLInputElement).placeholder || "")
           out.push(`${indent}<${tag} ${attrs.join(" ")}>${label}</${tag}>`)
           idx++
-        } else {
-          const textTags = ["h1", "h2", "h3", "h4", "h5", "h6", "p", "li", "td", "th", "label"]
-          if (textTags.includes(tag)) {
-            const directText = Array.from(el.childNodes)
-              .filter(n => n.nodeType === 3)
-              .map(n => n.textContent?.trim())
-              .join(" ")
-              .trim()
+        } else if (textTags.has(tag)) {
+          const directText = Array.from(el.childNodes)
+            .filter(n => n.nodeType === 3)
+            .map(n => n.textContent?.trim())
+            .join(" ")
+            .trim()
 
-            if (directText.length > 2) {
-              out.push(`${indent}<${tag}>${esc(directText)}</${tag}>`)
-            }
+          if (directText.length > 2) {
+            out.push(`${indent}<${tag}>${esc(directText)}</${tag}>`)
           }
         }
 

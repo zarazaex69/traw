@@ -202,9 +202,7 @@ What's your next action?`
       }
     } catch (err) {
       const logEntry = `\n--- ${new Date().toISOString()} ---\nError: ${err}\nResponse:\n${response}\n`
-      import("fs").then(fs => {
-        fs.appendFileSync("agent-errors.log", logEntry)
-      }).catch(() => {})
+      Bun.write("agent-errors.log", logEntry).catch(() => {})
       return null
     }
   }

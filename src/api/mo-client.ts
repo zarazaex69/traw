@@ -48,13 +48,13 @@ export class MoClient {
         }),
       })
     } catch (err: any) {
-      clearTimeout(timeoutId)
       if (err.name === "AbortError") {
         throw new Error(`mo timeout: no response in ${timeoutMs / 1000}s`)
       }
       throw err
+    } finally {
+      clearTimeout(timeoutId)
     }
-    clearTimeout(timeoutId)
 
     if (!resp.ok) {
       const body = await resp.text()
